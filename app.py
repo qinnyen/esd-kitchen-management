@@ -15,12 +15,12 @@ from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
 
-MENU_MICROSERVICE_URL = "http://localhost:5002/menu"
+MENU_MICROSERVICE_URL = "http://localhost:5002/menu/all"
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/menu', methods=['GET'])
+@app.route('/menu/all', methods=['GET'])
 def fetch_menu():
     try:
         response = requests.get(MENU_MICROSERVICE_URL)

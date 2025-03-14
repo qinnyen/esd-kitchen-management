@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function() {
-    fetch('/menu')
+    fetch('/menu/all')
         .then(response => response.json())
         .then(data => {
             const menuContainer = document.getElementById('menu-container');
