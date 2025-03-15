@@ -1,41 +1,77 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, request, jsonify, render_template
 import requests
-app = Flask(__name__)
-
-# Sample menu data
-menu_items = [
-    {"id": 1, "name": "Margherita Pizza", "description": "Classic cheese and tomato pizza", "price": 10.00},
-    {"id": 2, "name": "Pepperoni Pizza", "description": "Pepperoni and cheese pizza", "price": 12.50},
-    {"id": 3, "name": "Veggie Salad", "description": "Fresh garden vegetables with dressing", "price": 8.00},
-    {"id": 4, "name": "Spaghetti Bolognese", "description": "Pasta with rich meat sauce", "price": 15.00},
-    {"id": 5, "name": "Garlic Bread", "description": "Toasted bread with garlic butter", "price": 5.00},
-]
-
-from flask import Flask, jsonify, render_template, request
+from flask_sqlalchemy import SQLAlchemy
+from config import DATABASE_CONFIG
+from models import db,Menu,MenuIngredient,OrderFulfillment
 
 app = Flask(__name__)
 
-MENU_MICROSERVICE_URL = "http://localhost:5002/menu/all"
-@app.route('/')
+# URLs for external services
+ORDER_FULFILLMENT_SERVICE_URL = "http://localhost:5003"
+
+# Initialize SQLAlchemy instances
+# Configuration for Menu Service database
+app.config['SQLALCHEMY_BINDS'] = {
+    'menu_db': f"mysql+mysqlconnector://{DATABASE_CONFIG['menu_db']['user']}:{DATABASE_CONFIG['menu_db']['password']}@{DATABASE_CONFIG['menu_db']['host']}:{DATABASE_CONFIG['menu_db']['port']}/{DATABASE_CONFIG['menu_db']['database']}",
+    'order_fulfillment_db': f"mysql+mysqlconnector://{DATABASE_CONFIG['order_fulfillment_db']['user']}:{DATABASE_CONFIG['order_fulfillment_db']['password']}@{DATABASE_CONFIG['order_fulfillment_db']['host']}:{DATABASE_CONFIG['order_fulfillment_db']['port']}/{DATABASE_CONFIG['order_fulfillment_db']['database']}"
+}
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+@app.route("/")
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
 
-@app.route('/menu/all', methods=['GET'])
-def fetch_menu():
+@app.route("/menu/all", methods=["GET"])
+def get_all_menu_items():
     try:
-        response = requests.get(MENU_MICROSERVICE_URL)
+        # Fetch menu items via Order Fulfillment Service
+        response = requests.get(f"{ORDER_FULFILLMENT_SERVICE_URL}/order-fulfillment/menu/all")
         response.raise_for_status()
-        menu_items = response.json()
-        return jsonify(menu_items)
+        return jsonify(response.json()), 200
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/create_order", methods=["POST"])
+def create_order():
+    try:
+        data = request.get_json()
+        customer_id = data["customer_id"]
+        menu_item_ids = data["menu_item_ids"]
+
+        # Create order via Order Fulfillment Service
+        payload = {"customer_id": customer_id, "menu_item_ids": menu_item_ids}
+        response = requests.post(f"{ORDER_FULFILLMENT_SERVICE_URL}/order-fulfillment/create-order", json=payload)
+        response.raise_for_status()
+
+        return jsonify(response.json()), 201
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/track_order/<int:order_id>", methods=["GET"])
+def track_order(order_id):
+    try:
+        # Fetch order status via Order Fulfillment Service
+        response = requests.get(f"{ORDER_FULFILLMENT_SERVICE_URL}/order-fulfillment/get-order/{order_id}")
+        response.raise_for_status()
+        return jsonify(response.json()), 200
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/test-db', methods=['GET'])
+def test_db():
+    try:
+        # Query a single record from the database
+        menu_item = Menu.query.first()
+        if menu_item:
+            return jsonify({"message": "Database connection successful"}), 200
+        else:
+            return jsonify({"message": "No data found in Menu table"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 @app.route('/cart')
 def cart():
     return render_template('cart.html')
-
-
-
-
 if __name__ == "__main__":
     app.run(debug=True)

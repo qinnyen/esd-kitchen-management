@@ -1,16 +1,22 @@
 from flask import Flask, jsonify
-from flask_sqlalchemy import SQLAlchemy
+import sys
+sys.path.append('..')
 from config import DATABASE_CONFIG
-from models import db, Menu, MenuIngredient
-
+from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
 
-# Configure the database connection
-app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DATABASE_CONFIG['user']}:{DATABASE_CONFIG['password']}@{DATABASE_CONFIG['host']}:{DATABASE_CONFIG['port']}/{DATABASE_CONFIG['database']}"
+# Configure Menu Service database
+app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DATABASE_CONFIG['menu_db']['user']}:{DATABASE_CONFIG['menu_db']['password']}@{DATABASE_CONFIG['menu_db']['host']}:{DATABASE_CONFIG['menu_db']['port']}/{DATABASE_CONFIG['menu_db']['database']}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize SQLAlchemy
-db.init_app(app)
+db = SQLAlchemy(app)
+class Menu(db.Model):
+    __tablename__ = 'Menu'
+    MenuItemID = db.Column(db.Integer, primary_key=True)
+    ItemName = db.Column(db.String(100), nullable=False)
+    Description = db.Column(db.Text, nullable=True)
+    Price = db.Column(db.Float, nullable=False)
+    AvailabilityStatus = db.Column(db.Boolean, default=True)
 
 @app.route('/menu/all', methods=['GET'])
 def get_menu():
@@ -65,7 +71,8 @@ def get_ingredient_requirements(menu_item_id):
             return jsonify({"error": "No ingredients found for this menu item"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()  # Create tables if they don't exist
+    
     app.run(host="0.0.0.0", port=5002, debug=True)

@@ -29,23 +29,16 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 function checkout() {
-    const cart = JSON.parse(localStorage.getItem('cart')) || [];
-    
-    if (cart.length === 0) {
-        alert("Your cart is empty!");
-        return;
-    }
-
+    const cartItems = JSON.parse(localStorage.getItem('cart')) || [];
     const customerId = prompt("Enter your Customer ID:");
-    
     fetch('/create_order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer_id: customerId, items: cart })
+        body: JSON.stringify({ customer_id: customerId, menu_item_ids: cartItems.map(item => item.id) })
     })
         .then(response => response.json())
         .then(data => {
-            alert("Order created successfully! Order ID: " + data.order_id);
+            alert(`Order created successfully! Order ID: ${data.order_id}`);
             localStorage.removeItem('cart');
             window.location.href = "/";
         })
