@@ -8,12 +8,13 @@ app = Flask(__name__)
 
 # URLs for external services
 ORDER_FULFILLMENT_SERVICE_URL = "http://localhost:5003"
-
+MENU_SERVICE_URL = "http://localhost:5002"
 # Initialize SQLAlchemy instances
 # Configuration for Menu Service database
 app.config['SQLALCHEMY_BINDS'] = {
     'menu_db': f"mysql+mysqlconnector://{DATABASE_CONFIG['menu_db']['user']}:{DATABASE_CONFIG['menu_db']['password']}@{DATABASE_CONFIG['menu_db']['host']}:{DATABASE_CONFIG['menu_db']['port']}/{DATABASE_CONFIG['menu_db']['database']}",
-    'order_fulfillment_db': f"mysql+mysqlconnector://{DATABASE_CONFIG['order_fulfillment_db']['user']}:{DATABASE_CONFIG['order_fulfillment_db']['password']}@{DATABASE_CONFIG['order_fulfillment_db']['host']}:{DATABASE_CONFIG['order_fulfillment_db']['port']}/{DATABASE_CONFIG['order_fulfillment_db']['database']}"
+    'order_fulfillment_db': f"mysql+mysqlconnector://{DATABASE_CONFIG['order_fulfillment_db']['user']}:{DATABASE_CONFIG['order_fulfillment_db']['password']}@{DATABASE_CONFIG['order_fulfillment_db']['host']}:{DATABASE_CONFIG['order_fulfillment_db']['port']}/{DATABASE_CONFIG['order_fulfillment_db']['database']}",
+    'inventory_db': f"mysql+mysqlconnector://{DATABASE_CONFIG['inventory_db']['user']}:{DATABASE_CONFIG['inventory_db']['password']}@{DATABASE_CONFIG['inventory_db']['host']}:{DATABASE_CONFIG['inventory_db']['port']}/{DATABASE_CONFIG['inventory_db']['database']}"
 }
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -27,7 +28,7 @@ def index():
 def get_all_menu_items():
     try:
         # Fetch menu items via Order Fulfillment Service
-        response = requests.get(f"{ORDER_FULFILLMENT_SERVICE_URL}/order-fulfillment/menu/all")
+        response = requests.get(f"{MENU_SERVICE_URL}/menu/all")
         response.raise_for_status()
         return jsonify(response.json()), 200
     except requests.exceptions.RequestException as e:

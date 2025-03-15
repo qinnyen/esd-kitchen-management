@@ -4,6 +4,7 @@ import sys
 sys.path.append('..')
 from config import DATABASE_CONFIG
 from flask_sqlalchemy import SQLAlchemy
+
 app = Flask(__name__)
 # Configure Menu Service database
 app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DATABASE_CONFIG['order_fulfillment_db']['user']}:{DATABASE_CONFIG['order_fulfillment_db']['password']}@{DATABASE_CONFIG['order_fulfillment_db']['host']}:{DATABASE_CONFIG['order_fulfillment_db']['port']}/{DATABASE_CONFIG['order_fulfillment_db']['database']}"
