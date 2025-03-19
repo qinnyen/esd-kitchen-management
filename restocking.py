@@ -5,14 +5,17 @@ import pika
 import json
 from os import environ
 import threading
+from config import DATABASE_CONFIG
+
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for cross-origin requests
 
 # Database configuration
-app.config["SQLALCHEMY_DATABASE_URI"] = (
-    environ.get("dbURL") or "mysql+mysqlconnector://root@localhost:3306/is213_restocking"
-)
+app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+mysqlconnector://{DATABASE_CONFIG['restocking_db']['user']}:{DATABASE_CONFIG['restocking_db']['password']}@{DATABASE_CONFIG['restocking_db']['host']}:{DATABASE_CONFIG['restocking_db']['port']}/{DATABASE_CONFIG['restocking_db']['database']}"
+# app.config["SQLALCHEMY_DATABASE_URI"] = (
+#     environ.get("dbURL") or "mysql+mysqlconnector://root@localhost:3306/is213_restocking"
+# )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
