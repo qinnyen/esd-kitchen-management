@@ -1,5 +1,5 @@
-CREATE DATABASE is214_restocking;
-USE is214_restocking;
+CREATE DATABASE is213_restocking;
+USE is213_restocking;
 
 CREATE TABLE Suppliers (
     SupplierID INT PRIMARY KEY AUTO_INCREMENT,
