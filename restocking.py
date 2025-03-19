@@ -48,7 +48,7 @@ def send_to_order_supply(message):
     channel.queue_declare(queue=QUEUE_TO_ORDER_SUPPLY)
     channel.basic_publish(exchange="", routing_key=QUEUE_TO_ORDER_SUPPLY, body=json.dumps(message))
     connection.close()
-    print(f" [Restocking Service] Sent to Order Supply: {message}")
+    print(f" [Restocking Service] Sent to order_supply_queue: {message}")
 
 def get_next_supplier(ingredient_name, retry_count):
     """Get the next preferred supplier for an ingredient."""
@@ -89,7 +89,8 @@ def start_next_supplier_consumer():
             amount_needed = data.get("amount_needed")
             unit_of_measure = data.get("unit_of_measure")
             retry_count = data.get("retry_count", 0)
-            print(f" [Restocking Service] Received next supplier request: {ingredient_name}, {amount_needed}, {unit_of_measure}, retry {retry_count}")
+            # print(f" [Restocking Service] Received next supplier request: {ingredient_name}, {amount_needed}, {unit_of_measure}, retry {retry_count}")
+            print(f" [Restocking Service] Received next supplier request: {data}")
 
             # Get the next supplier
             supplier = get_next_supplier(ingredient_name, retry_count)
@@ -103,7 +104,7 @@ def start_next_supplier_consumer():
                 }
                 # Send the order data to the Order Supply Service
                 send_to_order_supply(order_data)
-                print(f" [Restocking Service] Sent next supplier order: {order_data}")
+                print(f" [Restocking Service] Sent next supplier details to order_supply_queue: {order_data}")
             else:
                 # Notify that no more suppliers are available
                 notification_message = {
@@ -112,7 +113,6 @@ def start_next_supplier_consumer():
                     "order_data": data
                 }
                 send_to_order_supply(notification_message)
-                print(f" [Restocking Service] No more suppliers available for {ingredient_name}")
         except Exception as e:
             print(f" [Restocking Service] Error processing next supplier request: {e}")
         finally:
@@ -155,7 +155,6 @@ def process_restock_request(ingredient_name, amount_needed, unit_of_measure):
             
             # Send the order data to the Order Supply Service
             send_to_order_supply(order_data)
-            print(f" [Restocking Service] Order request sent for {amount_needed} {unit_of_measure} of {ingredient_name} from {supplier.SupplierName} to Order Supply Service")
             return
 
 def start_amqp_consumer():
@@ -170,7 +169,8 @@ def start_amqp_consumer():
             ingredient_name = data.get("ingredient_name")
             amount_needed = data.get("amount_needed")
             unit_of_measure = data.get("unit_of_measure")
-            print(f" [Restocking Service] Received restock request: {ingredient_name}, {amount_needed}, {unit_of_measure}")
+            # print(f" [Restocking Service] Received restock request: {ingredient_name}, {amount_needed}, {unit_of_measure}")
+            print(f" [Restocking Service] Received restock request: {data}")
             process_restock_request(ingredient_name, amount_needed, unit_of_measure)
         except Exception as e:
             print(f" [Restocking Service] Error processing message: {e}")

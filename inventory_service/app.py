@@ -51,7 +51,7 @@ def send_restock_request(ingredient_name, amount_needed, unit_of_measure):
             routing_key=QUEUE_TO_RESTOCKING,
             body=json.dumps(message)
         )
-        print(f" [Inventory Service] Sent restock request: {message}")
+        print(f" [Inventory Service] Sent to restocking_queue: {message}")
         connection.close()
     except Exception as e:
         print(f" [Inventory Service] Error sending restock request: {e}")
