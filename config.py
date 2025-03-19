@@ -11,7 +11,7 @@ DATABASE_CONFIG = {
         'port': 3306,
         'user': 'root',
         'password': '',
-        'database': 'is213_order_fulfilment'
+        'database': 'is213_order_fulfillment'
     },
     'inventory_db': {
         'host': 'localhost',
