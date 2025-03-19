@@ -15,7 +15,6 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # AMQP configuration
 RABBITMQ_HOST = environ.get("RABBITMQ_HOST") or "localhost"
 QUEUE_FROM_RESTOCKING = "order_supply_queue"  # Queue to receive orders from Restocking Service
-QUEUE_TO_RESTOCKING = "restocking_response_queue"  # Queue to send responses back to Restocking Service
 QUEUE_TO_NOTIFICATION = "notification_queue"  # Queue to send notifications
 QUEUE_TO_NEXT_SUPPLIER = "next_supplier_queue"  # Queue to request the next preferred supplier
 
