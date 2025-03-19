@@ -109,6 +109,23 @@ def get_low_stock_items():
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+@app.route('/inventory/batch', methods=['POST'])
+def get_batch_ingredients():
+    try:
+        data = request.get_json()
+        ingredient_ids = data.get('ingredient_ids', [])
+        
+        if not ingredient_ids:
+            return jsonify({"error": "No ingredient IDs provided"}), 400
+        
+        ingredients = Inventory.query.filter(Inventory.IngredientID.in_(ingredient_ids)).all()
+        result = {
+            str(item.IngredientID): item.QuantityAvailable
+            for item in ingredients
+        }
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5004, debug=True)

@@ -27,7 +27,7 @@ def index():
 @app.route("/menu/all", methods=["GET"])
 def get_all_menu_items():
     try:
-        # Fetch menu items via Order Fulfillment Service
+        # Fetch menu items via Menu Service
         response = requests.get(f"{MENU_SERVICE_URL}/menu/all")
         response.raise_for_status()
         return jsonify(response.json()), 200

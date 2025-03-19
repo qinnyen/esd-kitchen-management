@@ -29,27 +29,31 @@ class MenuIngredient(db.Model):
 @app.route('/menu/all', methods=['GET'])
 def get_all_menu_items():
     try:
-        # Fetch all menu items
+        # Fetch all menu items and their ingredients
         menu_items = Menu.query.all()
+        menu_ingredients = MenuIngredient.query.all()
+
+        # Create a dictionary to store the ingredients for each menu item
+        ingredients_dict = {}
+        for ingredient in menu_ingredients:
+            if ingredient.MenuItemID not in ingredients_dict:
+                ingredients_dict[ingredient.MenuItemID] = []
+            ingredients_dict[ingredient.MenuItemID].append(ingredient)
+
+        # Batch request to Inventory Service
+        ingredient_ids = {ingredient.IngredientID for ingredient in menu_ingredients}
+        inventory_response = requests.post("http://localhost:5004/inventory/batch", json={"ingredient_ids": list(ingredient_ids)})
+        inventory_data = inventory_response.json() if inventory_response.status_code == 200 else {}
 
         # Check ingredient availability for each menu item
         result = []
-        for item in menu_items:
-            ingredients = MenuIngredient.query.filter_by(MenuItemID=item.MenuItemID).all()
+        for item in menu_items: 
             is_available = True
-
-            # Query Inventory Service for each ingredient
-            for ingredient in ingredients:
-                response = requests.get(f"http://localhost:5004/inventory/{ingredient.IngredientID}")
-                if response.status_code == 200:
-                    inventory_data = response.json()
-                    if inventory_data["quantity_available"] < ingredient.QuantityRequired:
+            if item.MenuItemID in ingredients_dict:
+                for ingredient in ingredients_dict[item.MenuItemID]:
+                    if inventory_data.get(str(ingredient.IngredientID), 0) < ingredient.QuantityRequired:
                         is_available = False
-                        
                         break
-                else:
-                    is_available = False
-                    break
 
             # Update availability status based on ingredient check
             item.AvailabilityStatus = is_available
@@ -65,6 +69,7 @@ def get_all_menu_items():
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 @app.route('/menu/item/<int:itemID>', methods=['GET'])
 def get_menu_item_details(itemID):
     try:
