@@ -28,7 +28,6 @@ def send_to_queue(queue_name, message):
     connection.close()
     print(f" [Order Supply Service] Sent to {queue_name}: {message}")
 
-
 def simulate_external_supplier(order_data):
     """Simulate ordering from an external supplier and return a response."""
     print(f" [Order Supply Service] Simulating order from external supplier: {order_data}")
@@ -86,6 +85,7 @@ def process_order_request(order_data, retry_count=0):
             next_supplier_request = {
                 "ingredient_name": order_data["ingredient_name"],
                 "amount_needed": order_data["amount_needed"],
+                "unit_of_measure": order_data["unit_of_measure"],
                 "retry_count": retry_count + 1
             }
             send_to_queue(QUEUE_TO_NEXT_SUPPLIER, next_supplier_request)
