@@ -53,10 +53,10 @@ def send_to_order_supply(message):
     connection.close()
     print(f" [Restocking Service] Sent to Order Supply: {message}")
 
-def process_restock_request(ingredient_name, amount_needed):
+def process_restock_request(ingredient_name, amount_needed, unit_of_measure):
     """Process a restock request by finding the preferred supplier and sending an order request."""
     # Push the Flask application context
-    with app.app_context():  # <-- NEW: Added application context
+    with app.app_context():
         # Find the ingredient ID
         ingredient = db.session.scalar(db.select(Ingredient).filter_by(IngredientName=ingredient_name))
         if not ingredient:
@@ -80,12 +80,13 @@ def process_restock_request(ingredient_name, amount_needed):
             order_data = {
                 "supplier_name": supplier.SupplierName,
                 "ingredient_name": ingredient_name,
-                "amount_needed": amount_needed
+                "amount_needed": amount_needed,
+                "unit_of_measure": unit_of_measure
             }
             
             # Send the order data to the Order Supply Service
             send_to_order_supply(order_data)
-            print(f" [Restocking Service] Order request sent for {amount_needed} of {ingredient_name} from {supplier.SupplierName} to Order Supply Service")
+            print(f" [Restocking Service] Order request sent for {amount_needed} {unit_of_measure} of {ingredient_name} from {supplier.SupplierName} to Order Supply Service")
             return
 
 def start_amqp_consumer():
@@ -99,8 +100,9 @@ def start_amqp_consumer():
             data = json.loads(body)
             ingredient_name = data.get("ingredient_name")
             amount_needed = data.get("amount_needed")
-            print(f" [Restocking Service] Received restock request: {ingredient_name}, {amount_needed}")
-            process_restock_request(ingredient_name, amount_needed)
+            unit_of_measure = data.get("unit_of_measure")
+            print(f" [Restocking Service] Received restock request: {ingredient_name}, {amount_needed}, {unit_of_measure}")
+            process_restock_request(ingredient_name, amount_needed, unit_of_measure)
         except Exception as e:
             print(f" [Restocking Service] Error processing message: {e}")
         finally:
