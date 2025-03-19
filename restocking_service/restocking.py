@@ -11,7 +11,7 @@ CORS(app)  # Enable CORS for cross-origin requests
 
 # Database configuration
 app.config["SQLALCHEMY_DATABASE_URI"] = (
-    environ.get("dbURL") or "mysql+mysqlconnector://root@localhost:3306/restocking"
+    environ.get("dbURL") or "mysql+mysqlconnector://root@localhost:3306/is214_restocking"
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
