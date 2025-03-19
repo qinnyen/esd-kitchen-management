@@ -65,9 +65,55 @@ def simulate_external_supplier(order_data):
                 "order_data": order_data
             }
 
+# def process_order_request(order_data, retry_count=0):
+#     """Process an order request by simulating an external supplier and handling success/failure."""
+#     try:
+#         # Simulate ordering from the supplier
+#         supplier_response = simulate_external_supplier(order_data)
+
+#         if supplier_response["status"] == "success":
+#             # 5a) If the order succeeds, send a success message to the Notification Service
+#             notification_message = {
+#                 "type": "order_success",
+#                 "message": supplier_response["message"],
+#                 "order_data": supplier_response["order_data"]
+#             }
+#             send_to_queue(QUEUE_TO_NOTIFICATION, notification_message)
+#             print(f" [Order Supply Service] Order succeeded. Notification sent: {notification_message}")
+#         else:
+#             # 5b) If the order fails, request the next preferred supplier
+#             next_supplier_request = {
+#                 "ingredient_name": order_data["ingredient_name"],
+#                 "amount_needed": order_data["amount_needed"],
+#                 "unit_of_measure": order_data["unit_of_measure"],
+#                 "retry_count": retry_count + 1
+#             }
+#             send_to_queue(QUEUE_TO_NEXT_SUPPLIER, next_supplier_request)
+#             print(f" [Order Supply Service] Order failed. Requesting next supplier: {next_supplier_request}")
+#     except Exception as e:
+#         print(f" [Order Supply Service] Error processing order: {e}")
+#         error_message = {
+#             "type": "error",
+#             "message": f"Internal error processing order: {str(e)}",
+#             "order_data": order_data
+#         }
+#         send_to_queue(QUEUE_TO_NOTIFICATION, error_message)
+
 def process_order_request(order_data, retry_count=0):
     """Process an order request by simulating an external supplier and handling success/failure."""
     try:
+        # Check if the message is an error
+        if "type" in order_data and order_data["type"] == "error":
+            # Forward the error to the Notification Service
+            error_message = {
+                "type": "error",
+                "message": order_data["message"],
+                "order_data": order_data.get("order_data", {})
+            }
+            send_to_queue(QUEUE_TO_NOTIFICATION, error_message)
+            print(f" [Order Supply Service] Error forwarded to Notification Service: {error_message}")
+            return
+
         # Simulate ordering from the supplier
         supplier_response = simulate_external_supplier(order_data)
 
