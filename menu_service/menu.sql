@@ -1,5 +1,5 @@
-CREATE DATABASE is214_menu;
-use is214_menu;
+CREATE DATABASE is213_menu;
+use is213_menu;
 CREATE TABLE Menu (
     MenuItemID INT PRIMARY KEY AUTO_INCREMENT,
     ItemName VARCHAR(100) NOT NULL,

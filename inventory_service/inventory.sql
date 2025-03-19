@@ -1,5 +1,5 @@
-CREATE DATABASE is214_inventory;
-use is214_inventory;
+CREATE DATABASE is213_inventory;
+use is213_inventory;
 CREATE TABLE Inventory (
     IngredientID INT PRIMARY KEY AUTO_INCREMENT,
     IngredientName VARCHAR(100) NOT NULL,

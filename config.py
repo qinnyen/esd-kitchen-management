@@ -4,27 +4,27 @@ DATABASE_CONFIG = {
         'port': 3306,
         'user': 'root',
         'password': '',
-        'database': 'is214_menu'
+        'database': 'is213_menu'
     },
     'order_fulfillment_db': {
         'host': 'localhost',
         'port': 3306,
         'user': 'root',
         'password': '',
-        'database': 'is214_order_fulfilment'
+        'database': 'is213_order_fulfilment'
     },
     'inventory_db': {
         'host': 'localhost',
         'port': 3306,
         'user': 'root',
         'password': '',
-        'database': 'is214_inventory'
+        'database': 'is213_inventory'
     },
     'restocking_db': {
         'host': 'localhost',
         'port': 3306,
         'user': 'root',
         'password': '',
-        'database': 'is214_restocking'
+        'database': 'is213_restocking'
     }
 }

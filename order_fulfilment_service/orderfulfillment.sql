@@ -1,5 +1,5 @@
-CREATE DATABASE is214_order_fulfillment;
-use is214_order_fulfillment;
+CREATE DATABASE is213_order_fulfillment;
+use is213_order_fulfillment;
 CREATE TABLE OrderFulfillment (
     OrderID INT PRIMARY KEY AUTO_INCREMENT,
     CustomerID INT NOT NULL,
