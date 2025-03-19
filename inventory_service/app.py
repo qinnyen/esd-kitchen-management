@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import sys
+import pika
+import json
 sys.path.append('..')
 from config import DATABASE_CONFIG
-
 
 app = Flask(__name__)
 
@@ -20,6 +21,72 @@ class Inventory(db.Model):
     UnitOfMeasure = db.Column(db.String(50), nullable=False)
     ExpiryDate = db.Column(db.Date, nullable=False)
     ReorderThreshold = db.Column(db.Integer, nullable=False)
+
+# AMQP configuration for Restocking Service
+RABBITMQ_HOST = "localhost"
+QUEUE_TO_RESTOCKING = "restocking_queue"
+
+def send_restock_request(ingredient_name, amount_needed, unit_of_measure):
+    """
+    Send a restock request to the Restocking Service via AMQP.
+    """
+    try:
+        # Create a connection to RabbitMQ
+        connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
+        channel = connection.channel()
+
+        # Declare the queue (in case it doesn't exist)
+        channel.queue_declare(queue=QUEUE_TO_RESTOCKING)
+
+        # Prepare the message
+        message = {
+            "ingredient_name": ingredient_name,
+            "amount_needed": amount_needed,
+            "unit_of_measure": unit_of_measure
+        }
+
+        # Publish the message to the queue
+        channel.basic_publish(
+            exchange="",
+            routing_key=QUEUE_TO_RESTOCKING,
+            body=json.dumps(message)
+        )
+        print(f" [Inventory Service] Sent restock request: {message}")
+        connection.close()
+    except Exception as e:
+        print(f" [Inventory Service] Error sending restock request: {e}")
+
+def check_and_notify_low_stock():
+    """
+    Check for low stock items and send restock requests via AMQP.
+    """
+    try:
+        # Fetch ingredients below the reorder threshold
+        low_stock_items = Inventory.query.filter(Inventory.QuantityAvailable <= Inventory.ReorderThreshold).all()
+
+        if not low_stock_items:
+            print(" [Inventory Service] No low stock items found.")
+            return
+
+        # Send a restock request for each low stock item
+        for item in low_stock_items:
+            amount_needed = item.ReorderThreshold - item.QuantityAvailable
+            send_restock_request(item.IngredientName, amount_needed, item.UnitOfMeasure)
+    except Exception as e:
+        print(f" [Inventory Service] Error checking low stock: {e}")
+
+# New endpoint to trigger weekly low stock notifications for restocking service
+@app.route('/inventory/notify_low_stock', methods=['POST'])
+def notify_low_stock():
+    """
+    Endpoint to trigger low stock notifications.
+    """
+    try:
+        check_and_notify_low_stock()
+        return jsonify({"message": "Low stock notifications sent successfully."}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/inventory/<int:ingredient_id>', methods=['GET'])
 def get_ingredient(ingredient_id):
     try:
@@ -54,6 +121,7 @@ def update_stock_level(ingredient_id):
             return jsonify({"error": "Ingredient not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 @app.route('/inventory/all', methods=['GET'])
 def get_all_stocks():
     try:
@@ -93,6 +161,7 @@ def low_stock_alerts():
         return jsonify({"alerts": alerts}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 @app.route('/inventory/low_stock', methods=['GET'])
 def get_low_stock_items():
     try:
@@ -109,6 +178,7 @@ def get_low_stock_items():
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 @app.route('/inventory/batch', methods=['POST'])
 def get_batch_ingredients():
     try:
