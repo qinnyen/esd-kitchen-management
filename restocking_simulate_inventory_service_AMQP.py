@@ -15,7 +15,7 @@ channel.queue_declare(queue=QUEUE_TO_RESTOCKING)
 
 # Simulate a restock request
 restock_request = {
-    "ingredient_name": "Tomatoes",
+    "ingredient_name": "Tomato",
     "amount_needed": 100
 }
 
