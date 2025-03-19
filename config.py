@@ -20,7 +20,7 @@ DATABASE_CONFIG = {
         'password': '',
         'database': 'is214_inventory'
     },
-    'inventory_db': {
+    'restocking_db': {
         'host': 'localhost',
         'port': 3306,
         'user': 'root',
