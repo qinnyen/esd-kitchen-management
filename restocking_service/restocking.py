@@ -1,8 +1,10 @@
-from flask import Flask, request, jsonify
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-import requests
+import pika
+import json
 from os import environ
+import threading
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for cross-origin requests
@@ -34,45 +36,82 @@ class SupplierIngredient(db.Model):
     SupplierID = db.Column(db.Integer, db.ForeignKey("Suppliers.SupplierID"), primary_key=True)
     Priority = db.Column(db.Integer, nullable=False)
 
-# Endpoint to receive low stock alerts from inventory service
-@app.route("/restock", methods=["POST"])
-def restock():
-    data = request.get_json()
-    ingredient_name = data.get("ingredient_name")
-    amount_needed = data.get("amount_needed")
+# AMQP configuration
+RABBITMQ_HOST = environ.get("RABBITMQ_HOST") or "localhost"
+QUEUE_FROM_INVENTORY = "restocking_queue"
+QUEUE_TO_ORDER_SUPPLY = "order_supply_queue"
 
-    # Find the ingredient ID
-    ingredient = db.session.scalar(db.select(Ingredient).filter_by(IngredientName=ingredient_name))
-    if not ingredient:
-        return jsonify({"code": 404, "message": "Ingredient not found."}), 404
-    
-    # Find suppliers in priority order
-    supplier_relations = db.session.scalars(
-        db.select(SupplierIngredient).filter_by(IngredientID=ingredient.IngredientID).order_by(SupplierIngredient.Priority.asc())
-    ).all()
-    
-    if not supplier_relations:
-        return jsonify({"code": 404, "message": "No suppliers available for this ingredient."}), 404
-    
-    #THIS SHOULD BE CHANGED
-    supplier_service_url = "http://supplier-microservice/order"
-    
-    for supplier_relation in supplier_relations:
-        supplier = db.session.get(Supplier, supplier_relation.SupplierID)
+def send_to_order_supply(message):
+    """Send a message to the Order Supply Service via AMQP."""
+    connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
+    channel = connection.channel()
+    channel.queue_declare(queue=QUEUE_TO_ORDER_SUPPLY)
+    channel.basic_publish(exchange="", routing_key=QUEUE_TO_ORDER_SUPPLY, body=json.dumps(message))
+    connection.close()
+    print(f" [Restocking Service] Sent to Order Supply: {message}")
+
+def process_restock_request(ingredient_name, amount_needed):
+    """Process a restock request by finding the preferred supplier and sending an order request."""
+    # Push the Flask application context
+    with app.app_context():  # <-- NEW: Added application context
+        # Find the ingredient ID
+        ingredient = db.session.scalar(db.select(Ingredient).filter_by(IngredientName=ingredient_name))
+        if not ingredient:
+            print(f" [Restocking Service] Ingredient not found: {ingredient_name}")
+            return
         
-        # Prepare order data
-        order_data = {
-            "supplier_name": supplier.SupplierName,
-            "ingredient_name": ingredient_name,
-            "amount_needed": amount_needed
-        }
+        # Find suppliers in priority order
+        supplier_relations = db.session.scalars(
+            db.select(SupplierIngredient).filter_by(IngredientID=ingredient.IngredientID).order_by(SupplierIngredient.Priority.asc())
+        ).all()
         
-        response = requests.post(supplier_service_url, json=order_data)
+        if not supplier_relations:
+            print(f" [Restocking Service] No suppliers available for ingredient: {ingredient_name}")
+            return
         
-        if response.status_code == 200:
-            return jsonify({"code": 200, "message": "Order placed successfully.", "data": order_data})
-    
-    return jsonify({"code": 500, "message": "All suppliers failed to fulfill the order."}), 500
+        # Send the order request to the Order Supply Service via AMQP
+        for supplier_relation in supplier_relations:
+            supplier = db.session.get(Supplier, supplier_relation.SupplierID)
+            
+            # Prepare order data
+            order_data = {
+                "supplier_name": supplier.SupplierName,
+                "ingredient_name": ingredient_name,
+                "amount_needed": amount_needed
+            }
+            
+            # Send the order data to the Order Supply Service
+            send_to_order_supply(order_data)
+            print(f" [Restocking Service] Order request sent for {amount_needed} of {ingredient_name} from {supplier.SupplierName} to Order Supply Service")
+            return
+
+def start_amqp_consumer():
+    """Start consuming messages from the Inventory Service's AMQP queue."""
+    connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
+    channel = connection.channel()
+    channel.queue_declare(queue=QUEUE_FROM_INVENTORY)
+
+    def callback(ch, method, properties, body):
+        try:
+            data = json.loads(body)
+            ingredient_name = data.get("ingredient_name")
+            amount_needed = data.get("amount_needed")
+            print(f" [Restocking Service] Received restock request: {ingredient_name}, {amount_needed}")
+            process_restock_request(ingredient_name, amount_needed)
+        except Exception as e:
+            print(f" [Restocking Service] Error processing message: {e}")
+        finally:
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    channel.basic_consume(queue=QUEUE_FROM_INVENTORY, on_message_callback=callback)
+    print(" [Restocking Service] Waiting for restocking requests...")
+    channel.start_consuming()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    # Start the AMQP consumer in a separate thread
+    amqp_thread = threading.Thread(target=start_amqp_consumer)
+    amqp_thread.daemon = True
+    amqp_thread.start()
+
+    # Start the Flask app
+    app.run(host="0.0.0.0", port=5005, debug=True)
