@@ -1,7 +1,5 @@
 CREATE DATABASE is214_menu;
-
-USE menu_db;
-
+use is214_menu;
 CREATE TABLE Menu (
     MenuItemID INT PRIMARY KEY AUTO_INCREMENT,
     ItemName VARCHAR(100) NOT NULL,
