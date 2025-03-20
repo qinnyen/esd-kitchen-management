@@ -29,6 +29,9 @@ class OrderFulfillment(db.Model):
     MenuItemIDs = db.Column(db.String(255), nullable=False)
     TotalPrice = db.Column(db.Float, nullable=False)
     OrderStatus = db.Column(db.String(50), nullable=False)
+    AssignedStationID = db.Column(db.Integer, nullable=True)
+    NotificationSent = db.Column(db.Boolean, default=False)
+    CreatedAt = db.Column(db.TIMESTAMP, default=db.func.current_timestamp())
 
 # Inventory Service Models
 class Inventory(db.Model):
@@ -39,3 +42,14 @@ class Inventory(db.Model):
     QuantityAvailable = db.Column(db.Integer, nullable=False)
     UnitOfMeasure = db.Column(db.String(50), nullable=False)
     ExpiryDate = db.Column(db.Date, nullable=False)
+    ReorderThreshold = db.Column(db.Integer, nullable=False)
+    
+# Kitchen Station Service Models
+class KitchenStation(db.Model):
+    __tablename__ = 'KitchenStation'
+    TaskID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    OrderID = db.Column(db.Integer, nullable=False)
+    StationID = db.Column(db.Integer, nullable=False)
+    TaskStatus = db.Column(db.String(50), nullable=False)
+    StartTime = db.Column(db.TIMESTAMP, nullable=True)
+    EndTime = db.Column(db.TIMESTAMP, nullable=True)

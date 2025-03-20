@@ -20,12 +20,17 @@ document.addEventListener("DOMContentLoaded", function() {
         `;
         cartContainer.appendChild(cartItem);
     });
-
+    const totalPrice = cart.reduce((total, item) => total + item.price * item.quantity, 0);
+    const totalPriceElement = document.createElement('div');
+    totalPriceElement.className = 'text-right font-weight-bold';
+    totalPriceElement.innerHTML = `Total: $${totalPrice.toFixed(2)}`;
+    cartContainer.appendChild(totalPriceElement);
     const checkoutButton = document.createElement('button');
     checkoutButton.className = 'btn btn-success btn-block';
     checkoutButton.innerText = 'Checkout';
     checkoutButton.onclick = checkout;
     cartContainer.appendChild(checkoutButton);
+
 });
 
 function checkout() {
@@ -34,7 +39,7 @@ function checkout() {
     fetch('/create_order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer_id: customerId, menu_item_ids: cartItems.map(item => item.id) })
+        body: JSON.stringify({ customer_id: customerId, menu_item_ids: cartItems.map(item => item.id),total_price: cartItems.reduce((total, item) => total + item.price * item.quantity, 0)})
     })
         .then(response => response.json())
         .then(data => {

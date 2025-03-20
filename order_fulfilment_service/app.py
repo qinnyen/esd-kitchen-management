@@ -4,6 +4,7 @@ import sys
 sys.path.append('..')
 from config import DATABASE_CONFIG
 from flask_sqlalchemy import SQLAlchemy
+import random
 
 app = Flask(__name__)
 # Configure Menu Service database
@@ -22,46 +23,70 @@ class OrderFulfillment(db.Model):
     AssignedStationID = db.Column(db.Integer, nullable=True)
     NotificationSent = db.Column(db.Boolean, default=False)
     CreatedAt = db.Column(db.TIMESTAMP, default=db.func.current_timestamp())
-@app.route("/order-fulfillment/menu/all", methods=["GET"])
-def get_all_menu_items():
-    try:
-        # Proxy request to Menu Service
-        response = requests.get(f"{MENU_SERVICE_URL}/menu/all")
-        response.raise_for_status()
-        return jsonify(response.json()), 200
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
+# @app.route("/order-fulfillment/menu/all", methods=["GET"])
+# def get_all_menu_items():
+#     try:
+#         # Proxy request to Menu Service
+#         response = requests.get(f"{MENU_SERVICE_URL}/menu/all")
+#         response.raise_for_status()
+#         return jsonify(response.json()), 200
+#     except requests.exceptions.RequestException as e:
+#         return jsonify({"error": str(e)}), 500
 
-@app.route("/order-fulfillment/create-order", methods=["POST"])
+@app.route('/order-fulfillment/create-order', methods=['POST'])
 def create_order():
     try:
         data = request.get_json()
         customer_id = data["customer_id"]
         menu_item_ids = ",".join([str(id) for id in data["menu_item_ids"]])  # Convert list to comma-separated string
-
-        # Validate menu items via Menu Service
-        total_price = 0.0
-        for item_id in data["menu_item_ids"]:
-            response = requests.get(f"{MENU_SERVICE_URL}/menu/item/{item_id}")
-            if response.status_code == 200:
-                item_data = response.json()
-                total_price += item_data["price"]
-            else:
-                return jsonify({"error": f"Menu item ID {item_id} is invalid"}), 400
+        total_price = data["total_price"]
+        station_id = random.choice([101,102,103]) # Assume station ID is provided in the request
 
         # Create a new order in the database
         new_order = OrderFulfillment(
             CustomerID=customer_id,
             MenuItemIDs=menu_item_ids,
             TotalPrice=total_price,
-            OrderStatus="Pending"
+            OrderStatus="Pending",
+            AssignedStationID=station_id
         )
         db.session.add(new_order)
-        db.session.commit()  # Save changes to the database
+        db.session.commit()
 
-        return jsonify({"message": "Order created successfully", "order_id": new_order.OrderID}), 201
+        # Invoke Kitchen Station Service to assign the task
+        kitchen_station_url = "http://localhost:5008/kitchen/assign"
+        payload = {
+            "order_id": new_order.OrderID,
+            "station_id": station_id
+        }
+        response = requests.post(kitchen_station_url, json=payload)
+
+        if response.status_code == 201:
+            return jsonify({"message": "Order created and task assigned successfully", "order_id": new_order.OrderID}), 201
+        else:
+            return jsonify({"message": "Order created but failed to assign task", "order_id": new_order.OrderID}), 500
+
     except Exception as e:
-        db.session.rollback()  # Rollback changes if an error occurs
+        return jsonify({"error": str(e)}), 500
+@app.route('/order-fulfillment/<int:orderID>', methods=['GET'])
+def get_order_id(orderID):
+    try:
+        order = OrderFulfillment.query.filter_by(OrderID=orderID).first()
+        if order:
+            result = {
+                "id": order.OrderID,
+                "customer_id": order.CustomerID,
+                "menu_item_ids": order.MenuItemIDs,
+                "total_price": order.TotalPrice,
+                "order_status": order.OrderStatus,
+                "assigned_station_id": order.AssignedStationID,
+                "notification_sent": order.NotificationSent,
+                "created_at": order.CreatedAt.strftime('%Y-%m-%d %H:%M:%S')
+            }
+            return jsonify(result), 200
+        else:
+            return jsonify({"error": f"Menu item with ID {orderID} not found"}), 404
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 

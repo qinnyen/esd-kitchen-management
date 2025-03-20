@@ -25,6 +25,60 @@ class MenuIngredient(db.Model):
     QuantityRequired = db.Column(db.Float, nullable=False)
     __table_args__ = (db.PrimaryKeyConstraint('MenuItemID', 'IngredientID'),)
     
+ORDER_SERVICE_URL = "http://localhost:5003"  # Order Service URL
+INVENTORY_SERVICE_URL = "http://localhost:5004"  # Inventory Service URL  
+
+@app.route('/menu/<int:order_id>', methods=['GET'])
+def get_menu_and_ingredients(order_id):
+    try:
+        # Step 1: Fetch order details from Order Service
+        order_response = requests.get(f"{ORDER_SERVICE_URL}/order-fulfillment/{order_id}")
+        if order_response.status_code != 200:
+            return jsonify({"error": "Failed to fetch order details"}), 500
+
+        order_data = order_response.json()
+        menu_item_ids = [int(id.strip()) for id in order_data.get("menu_item_ids", "").split(",")]  # Example: [1, 2, 3]
+
+        menu_items = []
+        ingredients_data = []
+
+        # Step 2: Fetch menu items and their ingredients from Menu Service
+        for menu_item_id in menu_item_ids:
+            # Fetch menu item details
+            menu_item = Menu.query.filter_by(MenuItemID=menu_item_id).first()
+            if menu_item:
+                menu_items.append({
+                    "id": menu_item.MenuItemID,
+                    "name": menu_item.ItemName,
+                    "description": menu_item.Description,
+                    "price": menu_item.Price
+                })
+            # Fetch ingredient requirements for this menu item
+            ingredients_for_menu_item = MenuIngredient.query.filter_by(MenuItemID=menu_item_id).all()
+            for ingredient in ingredients_for_menu_item:
+                ingredients_data.append({
+                    "menu_item_id": menu_item_id,
+                    "ingredient_id": ingredient.IngredientID,
+                    "quantity_required": ingredient.QuantityRequired
+                })
+        # Step 3: Query Inventory Service for detailed ingredient information
+        detailed_ingredients = []
+        for ingredient in ingredients_data:
+            inventory_response = requests.get(f"{INVENTORY_SERVICE_URL}/inventory/{ingredient['ingredient_id']}")
+            if inventory_response.status_code == 200:
+                inventory_data = inventory_response.json()
+                detailed_ingredients.append({
+                    "name": inventory_data["name"],
+                    "quantity_available": inventory_data["quantity_available"],
+                    "unit_of_measure": inventory_data["unit_of_measure"],
+                    "quantity_required": ingredient["quantity_required"],
+                    "menu_item_id": ingredient["menu_item_id"]
+                })
+        
+        return jsonify({"menu_items": menu_items, "ingredients": detailed_ingredients}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/menu/all', methods=['GET'])
 def get_all_menu_items():
