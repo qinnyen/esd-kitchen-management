@@ -39,7 +39,11 @@ function checkout() {
     fetch('/create_order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer_id: customerId, menu_item_ids: cartItems.map(item => item.id),total_price: cartItems.reduce((total, item) => total + item.price * item.quantity, 0)})
+        body: JSON.stringify({
+            customer_id: customerId,
+            menu_item_ids: cartItems.map(item => ({ MenuItemID: item.id, Quantity: item.quantity })),
+            total_price: cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
+        })
     })
         .then(response => response.json())
         .then(data => {

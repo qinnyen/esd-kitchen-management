@@ -12,6 +12,11 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DATABASE_CONFI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # URL for Menu Service
 MENU_SERVICE_URL = "http://localhost:5002"
+ORDER_SERVICE_CREATE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/CreateOrder/"
+ORDER_SERVICE_READ = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/Orders"
+ORDER_SERVICE_UPDATE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/UpdateOrder/"
+ORDER_SERVICE_DELETE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/DeleteOrder/"
+
 db = SQLAlchemy(app)
 class OrderFulfillment(db.Model):
     __tablename__ = 'OrderFulfillment'
@@ -38,7 +43,7 @@ def create_order():
     try:
         data = request.get_json()
         customer_id = data["customer_id"]
-        menu_item_ids = ",".join([str(id) for id in data["menu_item_ids"]])  # Convert list to comma-separated string
+        menu_item_ids = ",".join([str(item["MenuItemID"]) for item in data["menu_item_ids"]])  # Convert list of dicts to comma-separated string of ids
         total_price = data["total_price"]
         station_id = random.choice([101,102,103]) # Assume station ID is provided in the request
 
@@ -50,9 +55,18 @@ def create_order():
             OrderStatus="Pending",
             AssignedStationID=station_id
         )
+        print(menu_item_ids)
+        print(data["menu_item_ids"])
         db.session.add(new_order)
         db.session.commit()
-
+        headers = {'Content-Type': 'application/json'}
+        order_data = {
+            "CustomerID": customer_id,
+            "MenuItems": data["menu_item_ids"],
+            "TotalPrice": total_price,
+            "OrderStatus": "Pending"
+        }
+        order_response = requests.post(ORDER_SERVICE_CREATE, json=order_data, headers=headers)
         # Invoke Kitchen Station Service to assign the task
         kitchen_station_url = "http://localhost:5008/kitchen/assign"
         payload = {
