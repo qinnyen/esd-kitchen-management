@@ -5,8 +5,8 @@ app = Flask(__name__)
 
 @app.route('/order', methods=['POST'])
 def process_order():
-    # Simulate fast response (0.5s delay)
-    time.sleep(0.5)
+    # Fast response (0.3s delay)
+    time.sleep(0.3)
     return jsonify({
         "status": "success",
         "message": "Order fulfilled by Lettuce Land",

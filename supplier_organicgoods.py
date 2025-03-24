@@ -7,19 +7,29 @@ app = Flask(__name__)
 @app.route('/order', methods=['POST'])
 def process_order():
     ingredient = request.json.get("ingredient_name")
+    
+    # Force failures for specific ingredients
     if ingredient == "Tomato":
         return jsonify({
             "status": "error",
             "message": "Organic Goods: Tomato crop failure",
             "supplier": "Organic Goods"
         })
-    # Simulate random delay (0.5-2s) for Lettuce/Cheese race condition
-    delay = random.uniform(0.5, 2.0)
+    elif ingredient == "Lettuce":
+        return jsonify({
+            "status": "error",
+            "message": "Organic Goods: Lettuce out of season",
+            "supplier": "Organic Goods"
+        })
+    
+    # Success for Cheese (with random delay)
+    delay = random.uniform(1.0, 3.0)  # Simulate slower response
     time.sleep(delay)
     return jsonify({
         "status": "success",
         "supplier": "Organic Goods",
-        "processing_time": f"{delay:.2f}s"
+        "processing_time": f"{delay:.2f}s",
+        "message": f"Order for {ingredient} fulfilled"
     })
 
 if __name__ == "__main__":

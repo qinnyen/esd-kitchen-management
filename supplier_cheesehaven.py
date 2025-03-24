@@ -1,9 +1,12 @@
 from flask import Flask, request, jsonify
+import time
 
 app = Flask(__name__)
 
 @app.route('/order', methods=['POST'])
 def process_order():
+    # Fast response (0.5s delay)
+    time.sleep(0.5)
     return jsonify({
         "status": "success",
         "message": "Order fulfilled by Cheese Haven",
