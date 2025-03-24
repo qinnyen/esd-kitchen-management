@@ -3,6 +3,10 @@ from flask_sqlalchemy import SQLAlchemy
 import sys
 import pika
 import json
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+import atexit
+
 sys.path.append('..')
 from config import DATABASE_CONFIG
 
@@ -12,6 +16,13 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DATABASE_CONFIG['inventory_db']['user']}:{DATABASE_CONFIG['inventory_db']['password']}@{DATABASE_CONFIG['inventory_db']['host']}:{DATABASE_CONFIG['inventory_db']['port']}/{DATABASE_CONFIG['inventory_db']['database']}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
+# Initialize scheduler
+scheduler = BackgroundScheduler()
+scheduler.start()
+
+# Shut down the scheduler when the app exits
+atexit.register(lambda: scheduler.shutdown())
 
 class Inventory(db.Model):
     __tablename__ = 'Inventory'
@@ -57,35 +68,47 @@ def send_restock_request(ingredient_name, amount_needed, unit_of_measure):
         print(f" [Inventory Service] Error sending restock request: {e}")
 
 def check_and_notify_low_stock():
-    """
-    Check for low stock items and send restock requests via AMQP.
-    """
-    try:
-        # Fetch ingredients below the reorder threshold
-        low_stock_items = Inventory.query.filter(Inventory.QuantityAvailable <= Inventory.ReorderThreshold).all()
+    """Check for low stock items within Flask app context."""
+    with app.app_context():  # <-- Add this wrapper
+        try:
+            low_stock_items = Inventory.query.filter(
+                Inventory.QuantityAvailable <= Inventory.ReorderThreshold
+            ).all()
+            if not low_stock_items:
+                print(" [Inventory Service] No low stock items found.")
+                return
+            for item in low_stock_items:
+                amount_needed = item.ReorderThreshold - item.QuantityAvailable
+                send_restock_request(item.IngredientName, amount_needed, item.UnitOfMeasure)
+        except Exception as e:
+            print(f" [Inventory Service] Error checking low stock: {e}")
 
-        if not low_stock_items:
-            print(" [Inventory Service] No low stock items found.")
-            return
+# Schedule the job (adjust interval for testing/production)
+def schedule_low_stock_check(interval_minutes=1):  # Default: 1 minute (for testing)
+    """Schedule the low-stock check job with a configurable interval."""
+    trigger = IntervalTrigger(minutes=interval_minutes)  # Change to `weeks=1` for production
+    scheduler.add_job(
+        func=check_and_notify_low_stock,
+        trigger=trigger,
+        id="low_stock_check",
+        replace_existing=True,
+    )
+    print(f" [Scheduler] Low-stock check scheduled every {interval_minutes} minute(s).")
 
-        # Send a restock request for each low stock item
-        for item in low_stock_items:
-            amount_needed = item.ReorderThreshold - item.QuantityAvailable
-            send_restock_request(item.IngredientName, amount_needed, item.UnitOfMeasure)
-    except Exception as e:
-        print(f" [Inventory Service] Error checking low stock: {e}")
+# Start the scheduler when the app runs
+schedule_low_stock_check(interval_minutes=1)  # Set to 1 minute for testing
 
-# New endpoint to trigger weekly low stock notifications for restocking service
-@app.route('/inventory/notify_low_stock', methods=['POST'])
-def notify_low_stock():
-    """
-    Endpoint to trigger low stock notifications.
-    """
-    try:
-        check_and_notify_low_stock()
-        return jsonify({"message": "Low stock notifications sent successfully."}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# Endpoint to manually trigger weekly low stock notifications for restocking service, redundant when we have scheduler
+# @app.route('/inventory/notify_low_stock', methods=['POST'])
+# def notify_low_stock():
+#     """
+#     Endpoint to trigger low stock notifications.
+#     """
+#     try:
+#         check_and_notify_low_stock()
+#         return jsonify({"message": "Low stock notifications sent successfully."}), 200
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
 
 @app.route('/inventory/<int:ingredient_id>', methods=['GET'])
 def get_ingredient(ingredient_id):
@@ -198,4 +221,4 @@ def get_batch_ingredients():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5004, debug=True)
+    app.run(host="0.0.0.0", port=5004, debug=False) #Debug set to false to prevent duplication of cron jobs
