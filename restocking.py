@@ -38,17 +38,17 @@ class SupplierIngredient(db.Model):
 # AMQP configuration
 RABBITMQ_HOST = environ.get("RABBITMQ_HOST") or "localhost"
 QUEUE_FROM_INVENTORY = "restocking_queue"
-QUEUE_TO_ORDER_SUPPLY = "order_supply_queue"
+QUEUE_TO_MANAGE_INVENTORY = "manage_inventory_queue"
 QUEUE_FROM_NEXT_SUPPLIER = "next_supplier_queue"
 
 def send_to_order_supply(message):
     """Send a message to the Order Supply Service via AMQP."""
     connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
     channel = connection.channel()
-    channel.queue_declare(queue=QUEUE_TO_ORDER_SUPPLY)
-    channel.basic_publish(exchange="", routing_key=QUEUE_TO_ORDER_SUPPLY, body=json.dumps(message))
+    channel.queue_declare(queue=QUEUE_TO_MANAGE_INVENTORY)
+    channel.basic_publish(exchange="", routing_key=QUEUE_TO_MANAGE_INVENTORY, body=json.dumps(message))
     connection.close()
-    print(f" [Restocking Service] Sent to order_supply_queue: {message}")
+    print(f" [Restocking Service] Sent to manage_inventory_queue: {message}")
 
 def get_next_supplier(ingredient_name, retry_count):
     """Get the next preferred supplier for an ingredient."""
@@ -104,7 +104,7 @@ def start_next_supplier_consumer():
                 }
                 # Send the order data to the Order Supply Service
                 send_to_order_supply(order_data)
-                print(f" [Restocking Service] Sent next supplier details to order_supply_queue: {order_data}")
+                print(f" [Restocking Service] Sent next supplier details to manage_inventory_queue: {order_data}")
             else:
                 # Notify that no more suppliers are available
                 notification_message = {
