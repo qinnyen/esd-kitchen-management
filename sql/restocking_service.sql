@@ -1,3 +1,7 @@
+-- Clean up existing database if present
+DROP DATABASE IF EXISTS is213_restocking;
+
+-- Create fresh database
 CREATE DATABASE is213_restocking;
 USE is213_restocking;
 
@@ -16,7 +20,6 @@ CREATE TABLE Ingredients (
 CREATE TABLE SupplierIngredient (
     IngredientID INT,
     SupplierID INT,
-    Priority INT,
     PRIMARY KEY (IngredientID, SupplierID),
     FOREIGN KEY (IngredientID) REFERENCES Ingredients(IngredientID) ON DELETE CASCADE,
     FOREIGN KEY (SupplierID) REFERENCES Suppliers(SupplierID) ON DELETE CASCADE
@@ -40,18 +43,18 @@ INSERT INTO Ingredients (IngredientName) VALUES
 ('Chicken'),
 ('Garlic Butter');
 
--- Insert mock data into SupplierIngredient
-INSERT INTO SupplierIngredient (IngredientID, SupplierID, Priority) VALUES
+-- Insert mock data into SupplierIngredient (no priority needed)
+INSERT INTO SupplierIngredient (IngredientID, SupplierID) VALUES
 -- Tomato: 2 suppliers
-(1, 1, 1),  -- Fresh Farms (Priority 1)
-(1, 2, 2),  -- Organic Goods (Priority 2)
+(1, 1),  -- Fresh Farms
+(1, 2),  -- Organic Goods
 -- Cheese: 1 supplier
-(2, 4, 1),  -- Dairy Delight (Priority 1)
+(2, 4),  -- Dairy Delight
 -- Dough: 1 supplier
-(3, 5, 1),  -- Bakery Bliss (Priority 1)
+(3, 5),  -- Bakery Bliss
 -- Lettuce: 1 supplier
-(4, 1, 1),  -- Fresh Farms (Priority 1)
+(4, 1),  -- Fresh Farms
 -- Chicken: 1 supplier
-(5, 6, 1),  -- Poultry Palace (Priority 1)
+(5, 6),  -- Poultry Palace
 -- Garlic Butter: 1 supplier
-(6, 3, 1);  -- Global Spices (Priority 1)
+(6, 3);  -- Global Spices
