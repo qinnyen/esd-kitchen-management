@@ -84,19 +84,20 @@ def check_and_notify_low_stock():
             print(f" [Inventory Service] Error checking low stock: {e}")
 
 # Schedule the job (adjust interval for testing/production)
-def schedule_low_stock_check(interval_minutes=1):  # Default: 1 minute (for testing)
+def schedule_low_stock_check(interval_seconds=5):  # Default: 5 seconds for testing
     """Schedule the low-stock check job with a configurable interval."""
-    trigger = IntervalTrigger(minutes=interval_minutes)  # Change to `weeks=1` for production
+    trigger = IntervalTrigger(seconds=interval_seconds)  # Change to `weeks=1` for production
     scheduler.add_job(
         func=check_and_notify_low_stock,
         trigger=trigger,
         id="low_stock_check",
         replace_existing=True,
     )
-    print(f" [Scheduler] Low-stock check scheduled every {interval_minutes} minute(s).")
+    print(f" [Scheduler] Low-stock check scheduled every {interval_seconds} second(s).")
 
 # Start the scheduler when the app runs
-schedule_low_stock_check(interval_minutes=1)  # Set to 1 minute for testing
+schedule_low_stock_check(interval_seconds=5)  # Set to 5 seconds for testing
+
 
 # Endpoint to manually trigger weekly low stock notifications for restocking service, redundant when we have scheduler
 # @app.route('/inventory/notify_low_stock', methods=['POST'])
