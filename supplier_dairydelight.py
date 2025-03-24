@@ -6,9 +6,9 @@ app = Flask(__name__)
 def process_order():
     return jsonify({
         "status": "error",
-        "message": "Tomato Express: Forced failure for testing",
-        "supplier": "Tomato Express"
+        "message": "Dairy Delight: Out of stock",
+        "supplier": "Dairy Delight"
     })
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5018, debug=False)
+    app.run(host="0.0.0.0", port=5012, debug=False)

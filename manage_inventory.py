@@ -3,6 +3,7 @@ import pika
 import json
 import threading
 import requests
+import uuid
 
 app = Flask(__name__)
 
@@ -22,24 +23,37 @@ def send_to_queue(queue_name, message):
 
 def process_order_request(ch, method, properties, body):
     order_data = json.loads(body)
+    trace_id = str(uuid.uuid4())
+    print(f" [Trace {trace_id}] Processing order for {order_data['ingredient_name']}")
+    
     try:
         suppliers = [{"name": name} for name in order_data["suppliers"]]
-        
+        print(f" [Trace {trace_id}] Attempting suppliers: {[s['name'] for s in suppliers]}")
+
         response = requests.post(
             SUPPLIER_PLATFORM_URL,
             json={
                 "ingredient_name": order_data["ingredient_name"],
                 "amount_needed": order_data["amount_needed"],
                 "unit_of_measure": order_data["unit_of_measure"],
-                "suppliers": suppliers  
+                "suppliers": suppliers
             },
             timeout=5
         )
-        send_to_queue(QUEUE_TO_NOTIFICATION, response.json())
+        result = response.json()
+        
+        if result.get("status") == "success":
+            print(f" [Trace {trace_id}] Success via {result.get('supplier')}")
+        else:
+            print(f" [Trace {trace_id}] Failed suppliers: {result.get('attempted_suppliers', [])}")
+        
+        send_to_queue(QUEUE_TO_NOTIFICATION, result)
     except Exception as e:
+        print(f" [Trace {trace_id}] Critical error: {str(e)}")
         send_to_queue(QUEUE_TO_NOTIFICATION, {
             "type": "error",
-            "message": f"Order failed: {str(e)}"
+            "message": f"Order failed: {str(e)}",
+            "trace_id": trace_id
         })
     finally:
         ch.basic_ack(delivery_tag=method.delivery_tag)

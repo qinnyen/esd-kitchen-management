@@ -1,22 +1,20 @@
 from flask import Flask, request, jsonify
-import random
 
 app = Flask(__name__)
 
 @app.route('/order', methods=['POST'])
 def process_order():
-    # Simulate random success (70% chance)
-    if random.random() < 0.7:
+    ingredient = request.json.get("ingredient_name")
+    if ingredient in ["Tomato", "Lettuce"]:
         return jsonify({
-            "status": "success",
-            "message": "Order fulfilled by Fresh Farms",
-            "supplier": "Fresh Farms",
-            "order_data": request.json
+            "status": "error",
+            "message": "Fresh Farms: Forced failure for testing",
+            "supplier": "Fresh Farms"
         })
     return jsonify({
-        "status": "error",
-        "message": "Fresh Farms cannot fulfill order",
-        "order_data": request.json
+        "status": "success",
+        "message": "Order fulfilled by Fresh Farms",
+        "supplier": "Fresh Farms"
     })
 
 if __name__ == "__main__":

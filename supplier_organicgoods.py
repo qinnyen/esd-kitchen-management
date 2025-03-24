@@ -1,39 +1,25 @@
 from flask import Flask, request, jsonify
-import random
 import time
+import random
 
 app = Flask(__name__)
 
 @app.route('/order', methods=['POST'])
 def process_order():
-    """Simulate order processing with random success/failure and realistic delay"""
-    order_data = request.json
-    
-    # Simulate processing delay (0.5-2 seconds)
-    processing_time = random.uniform(0.5, 2.0)
-    time.sleep(processing_time)
-    
-    # Simulate 80% success rate (adjust as needed)
-    if random.random() < 0.8:
+    ingredient = request.json.get("ingredient_name")
+    if ingredient == "Tomato":
         return jsonify({
-            "status": "success",
-            "message": f"Order for {order_data['amount_needed']} units of {order_data['ingredient_name']} fulfilled by Organic Goods",
-            "supplier": "Organic Goods",
-            "processing_time": f"{processing_time:.2f}s",
-            "order_data": order_data
+            "status": "error",
+            "message": "Organic Goods: Tomato crop failure",
+            "supplier": "Organic Goods"
         })
-    
-    # Simulated failure cases
-    failure_reasons = [
-        "Insufficient stock",
-        "Shipping delay",
-        "Quality check failed"
-    ]
+    # Simulate random delay (0.5-2s) for Lettuce/Cheese race condition
+    delay = random.uniform(0.5, 2.0)
+    time.sleep(delay)
     return jsonify({
-        "status": "error",
-        "message": f"Organic Goods could not fulfill order: {random.choice(failure_reasons)}",
+        "status": "success",
         "supplier": "Organic Goods",
-        "order_data": order_data
+        "processing_time": f"{delay:.2f}s"
     })
 
 if __name__ == "__main__":

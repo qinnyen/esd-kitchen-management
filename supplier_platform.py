@@ -33,6 +33,7 @@ def place_order():
     order_id = str(uuid.uuid4())
     enhanced_data = {**order_data, "order_id": order_id}
     
+    attempted_suppliers = []
     with ThreadPoolExecutor() as executor:
         futures = {
             executor.submit(try_supplier, SUPPLIER_SERVICES[s["name"]], enhanced_data): s
@@ -41,15 +42,21 @@ def place_order():
         }
         
         for future in as_completed(futures, timeout=5):
+            supplier_name = futures[future]["name"]
+            attempted_suppliers.append(supplier_name)
             result = future.result()
             if result and result.get("status") == "success":
-                # Cancel other pending requests
                 for other_future, supplier in futures.items():
                     if not other_future.done():
                         cancel_supplier(SUPPLIER_SERVICES[supplier["name"]], enhanced_data)
                 return jsonify(result)
     
-    return jsonify({"status": "error", "message": "All suppliers failed"})
+    return jsonify({
+        "status": "error",
+        "message": "All suppliers failed",
+        "attempted_suppliers": attempted_suppliers,
+        "order_id": order_id
+    })
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5007, debug=False)
