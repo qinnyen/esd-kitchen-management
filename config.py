@@ -33,5 +33,13 @@ DATABASE_CONFIG = {
         'user': 'root',
         'password': '',
         'database': 'is213_restocking'
+    },
+    'feedback_db': {
+
+        'host': 'localhost',
+        'port': 3306,
+        'user': 'root',
+        'password': '',
+        'database': 'is213_feedback'
     }
 }
