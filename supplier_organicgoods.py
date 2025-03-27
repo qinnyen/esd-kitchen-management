@@ -1,35 +1,55 @@
 from flask import Flask, request, jsonify
 import time
-import random
 
 app = Flask(__name__)
 
-@app.route('/order', methods=['POST'])
-def process_order():
-    ingredient = request.json.get("ingredient_name")
+INVENTORY = {
+    "Cheese": True,
+    "Tomato": False
+}
+
+@app.route('/check_availability', methods=['GET'])
+def check_availability():
+    time.sleep(1.5)
+    ingredient = request.args.get('ingredient_name')
+    if ingredient not in INVENTORY:
+        return jsonify({
+            "available": False,
+            "supplier": "Organic Goods",
+            "reason": "Unsupported ingredient"
+        })
+    return jsonify({
+        "available": INVENTORY[ingredient],
+        "supplier": "Organic Goods",
+        "reason": "In stock" if INVENTORY[ingredient] else "Out of stock",
+    })
+
+@app.route('/place_order', methods=['POST'])
+def place_order():
+    data = request.json
+    ingredient = data["ingredient_name"]
     
-    # Force failures for specific ingredients
-    if ingredient == "Tomato":
+    if ingredient not in INVENTORY:
         return jsonify({
             "status": "error",
-            "message": "Organic Goods: Tomato crop failure",
-            "supplier": "Organic Goods"
-        })
-    elif ingredient == "Lettuce":
+            "supplier": "Organic Goods",
+            "message": "Unsupported ingredient"
+        }), 400
+    
+    if not INVENTORY[ingredient]:
         return jsonify({
             "status": "error",
-            "message": "Organic Goods: Lettuce out of season",
-            "supplier": "Organic Goods"
-        })
+            "supplier": "Organic Goods",
+            "message": f"Temporarily out of {ingredient}"
+        }), 400
     
-    # Success for Cheese (with random delay)
-    delay = random.uniform(1.0, 3.0)  # Simulate slower response
-    time.sleep(delay)
     return jsonify({
         "status": "success",
         "supplier": "Organic Goods",
-        "processing_time": f"{delay:.2f}s",
-        "message": f"Order for {ingredient} fulfilled"
+        "ingredient": ingredient,
+        "amount": data["amount"],
+        "unit": data["unit"],
+        "message": f"{data['amount']} {data['unit']} of {ingredient} confirmed"
     })
 
 if __name__ == "__main__":

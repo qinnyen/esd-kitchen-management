@@ -25,12 +25,12 @@ def check_availability():
             executor.submit(
                 requests.get,
                 f"{SUPPLIER_URLS[supplier]}/check_availability",
-                params={"ingredient_name": ingredient_name},  # Critical fix
-                timeout=2
+                params={"ingredient_name": ingredient_name},
+                timeout=5
             ): supplier for supplier in suppliers_to_check
         }
         
-        for future in as_completed(future_to_supplier, timeout=3):
+        for future in as_completed(future_to_supplier, timeout=5):
             supplier = future_to_supplier[future]
             try:
                 if future.result().json().get("available"):
