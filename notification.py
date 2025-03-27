@@ -59,9 +59,9 @@ def process_notification(ch, method, properties, body):
             Error in inventory order:
             
             Message: {notification_data.get("message", "No details provided")}
-            Trace ID: {notification_data.get("trace_id", "N/A")}
             Ingredient: {notification_data.get("ingredient", "Unknown")}
             Amount: {notification_data.get("requested_amount", "N/A")} {notification_data.get("requested_unit", "")}
+            Trace ID: {notification_data.get("trace_id", "N/A")}
             
             Please check the system for details.
             """
