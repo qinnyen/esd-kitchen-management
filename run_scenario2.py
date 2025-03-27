@@ -5,15 +5,15 @@ from pathlib import Path
 
 # List of all services to run with their ports
 SERVICES = [
+    {"name": "Restocking Service", "file": "restocking.py", "port": 5005},
+    {"name": "Manage Inventory", "file": "manage_inventory.py", "port": 5006},
+    {"name": "API Gateway", "file": "api_gateway.py", "port": 5007},
     {"name": "Fresh Farms", "file": "supplier_freshfarms.py", "port": 5010},
     {"name": "Organic Goods", "file": "supplier_organicgoods.py", "port": 5011},
     {"name": "Dairy Delight", "file": "supplier_dairydelight.py", "port": 5012},
     {"name": "Cheese Haven", "file": "supplier_cheesehaven.py", "port": 5016},
     {"name": "Lettuce Land", "file": "supplier_lettuceland.py", "port": 5017},
     {"name": "Tomato Express", "file": "supplier_tomatoexpress.py", "port": 5018},
-    {"name": "Restocking Service", "file": "restocking.py", "port": 5005},
-    {"name": "Manage Inventory", "file": "manage_inventory.py", "port": 5006},
-    {"name": "API Gateway", "file": "api_gateway.py", "port": 5007}
 ]
 
 def run_service(service):
