@@ -40,7 +40,7 @@ def check_availability():
     
     return jsonify({
         "available_suppliers": available_suppliers,
-        "ingredient": ingredient_name  # Added for traceability
+        "ingredient": ingredient_name
     })
 
 @app.route('/place_order', methods=['POST'])
@@ -54,7 +54,7 @@ def place_order():
             json=order_data,
             timeout=5
         )
-        # Mirror supplier response exactly
+
         result = response.json()
         result["gateway_status"] = "processed"  # Additional metadata
         return jsonify(result)

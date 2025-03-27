@@ -49,7 +49,7 @@ def process_order_request(ch, method, properties, body):
                 "amount": order_data["amount_needed"],
                 "unit": order_data["unit_of_measure"]
             },
-            timeout=5  # Reduced timeout
+            timeout=5
         ).json()
         
         # Add trace ID to success responses
