@@ -3,14 +3,51 @@ import time
 
 app = Flask(__name__)
 
-@app.route('/order', methods=['POST'])
-def process_order():
-    # Fast response (0.3s delay)
-    time.sleep(0.3)
+INVENTORY = {
+    "Lettuce": True
+}
+
+@app.route('/check_availability', methods=['GET'])
+def check_availability():
+    ingredient = request.args.get('ingredient_name')
+    if ingredient not in INVENTORY:
+        return jsonify({
+            "available": False,
+            "supplier": "Lettuce Land",
+            "reason": "Unsupported ingredient"
+        })
+    return jsonify({
+        "available": INVENTORY[ingredient],
+        "supplier": "Lettuce Land",
+        "reason": "In stock" if INVENTORY[ingredient] else "Out of stock"
+    })
+
+@app.route('/place_order', methods=['POST'])
+def place_order():
+    data = request.json
+    ingredient = data["ingredient_name"]
+    
+    if ingredient not in INVENTORY:
+        return jsonify({
+            "status": "error",
+            "supplier": "Lettuce Land",
+            "message": "Unsupported ingredient"
+        }), 400
+    
+    if not INVENTORY[ingredient]:
+        return jsonify({
+            "status": "error",
+            "supplier": "Lettuce Land",
+            "message": f"Temporarily out of {ingredient}"
+        }), 400
+    
     return jsonify({
         "status": "success",
-        "message": "Order fulfilled by Lettuce Land",
-        "supplier": "Lettuce Land"
+        "supplier": "Lettuce Land",
+        "ingredient": ingredient,
+        "amount": data["amount"],
+        "unit": data["unit"],
+        "message": f"{data['amount']} {data['unit']} of {ingredient} confirmed"
     })
 
 if __name__ == "__main__":
