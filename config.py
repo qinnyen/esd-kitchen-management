@@ -41,5 +41,12 @@ DATABASE_CONFIG = {
         'user': 'root',
         'password': '',
         'database': 'is213_feedback'
+    },
+    "rfid_db": {
+        "host": "localhost",
+        "port": 3306,
+        "user": "root",
+        "password": "",
+        "database": "rfid_service"
     }
 }
