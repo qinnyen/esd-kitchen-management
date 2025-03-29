@@ -75,39 +75,50 @@ def track_order(order_id):
 @app.route('/kitchen')
 def kitchen():
     return render_template('kitchen_station.html')
+
 @app.route('/status')
 def status():
     return render_template('status.html')
+
 @app.route('/kitchen/stations', methods=['GET'])
 def get_tasks():
     try:
-        response = requests.get("http://localhost:5008/kitchen/stations")
+        response = requests.get(f"{ORDER_FULFILLMENT_SERVICE_URL}/order-fulfillment/kitchen/stations")
         response.raise_for_status()
         return jsonify(response.json()), 200
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/kitchen/task/<int:task_id>', methods=['PUT'])
-def update_task_progress(task_id):
-    print("task_id",task_id)
+@app.route('/kitchen/task/<int:task_id>/<int:order_id>', methods=['PUT'])
+def update_task_progress(task_id, order_id):
     try:
+        print("Updating task progress...")
+        # Update task progress via Order Fulfillment Service
         data = request.get_json()
         new_status = data["task_status"]
 
-        response = requests.put(f"http://localhost:5008/kitchen/task/{task_id}", json={"task_status": new_status})
+        # Send the PUT request to the Order Fulfillment Service
+        response = requests.put(
+            f"{ORDER_FULFILLMENT_SERVICE_URL}/order-fulfillment/kitchen/task/{task_id}/{order_id}",
+            json={"task_status": new_status}
+        )
         response.raise_for_status()
 
-        return jsonify(response.json()), 201
+        # Extract JSON content from the response
+        response_data = response.json()
+        print("Task progress updated successfully.")
+        print("Response data:", response_data)
+        # Update the order status in the Order Fulfillment Service  
+        return jsonify(response_data), 201
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/order-fulfillment/<int:customer_id>', methods=['GET'])
 def get_order_status(customer_id):
     try:
-        print("customer_id",customer_id)
+        
         response = requests.get(f"{ORDER_FULFILLMENT_SERVICE_URL}/order-fulfillment/customer/{customer_id}")
         if response.status_code == 200:
-            print("response",response.json())
             return jsonify(response.json()), 200
         else:
             return jsonify({"error": "Failed to retrieve orders"}), response.status_code

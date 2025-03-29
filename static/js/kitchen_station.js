@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 .map((task) => {
                                     if (task.task_status === "In Progress") {
                                         // Fetch menu items and ingredients for tasks already "In Progress"
-                                        fetchMenuItemsAndIngredients(task.task_id, task.order_id);
+                                        setTimeout(() => fetchMenuItemsAndIngredients(task.task_id, task.order_id), 0);
                                     }
                                     if (task.task_status === "Completed") {
                                         return `
@@ -30,10 +30,8 @@ document.addEventListener("DOMContentLoaded", function () {
                                         return `
                                             <li class="list-group-item" id="task-${task.task_id}">
                                                 Task ID: ${task.task_id}, Order ID: ${task.order_id}, Status: ${task.task_status}
-                                                
                                             </li>
-                                            ${getTaskButton(task.task_id, task.task_status, task.order_id)}
-                                            `;
+                                            ${getTaskButton(task.task_id, task.task_status, task.order_id)}`;
                                     }
                                 })
                                 .join("")}
@@ -47,10 +45,27 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 function fetchMenuItemsAndIngredients(taskId, orderId) {
+    const taskElement = document.getElementById(`task-${taskId}`);
+    
+    if (!taskElement) {
+        console.error(`Task element with ID task-${taskId} not found.`);
+        return; // Exit the function if the element does not exist
+    }
+
+    // Display "Fetching order in progress"
+    const fetchingMessage = document.createElement("p");
+    fetchingMessage.id = `fetching-message-${taskId}`;
+    fetchingMessage.textContent = "Fetching order in progress...";
+    taskElement.appendChild(fetchingMessage);
+
     fetch(`/menu/${orderId}`) // Fetch menu items and ingredients for this order
-        .then((response) => response.json())
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then((data) => {
-            const taskElement = document.getElementById(`task-${taskId}`);
             const menuItemsWithIngredients = data.menu_items.map((menuItem) => {
                 const ingredientsForMenuItem = data.ingredients.filter(
                     (ingredient) => ingredient.menu_item_id === menuItem.id
@@ -59,7 +74,7 @@ function fetchMenuItemsAndIngredients(taskId, orderId) {
                 const ingredientList = ingredientsForMenuItem
                     .map(
                         (ingredient) =>
-                            `<li>${ingredient.name}: ${ingredient.quantity_required} ${ingredient.unit_of_measure}</li>`
+                            `<li>${ingredient.name}: ${ingredient.quantity_required * menuItem.quantity} ${ingredient.unit_of_measure}</li>`
                     )
                     .join("");
 
@@ -75,64 +90,107 @@ function fetchMenuItemsAndIngredients(taskId, orderId) {
                 ${menuItemsWithIngredients.join("")}
             `;
         })
-        .catch((error) =>
-            console.error("Error fetching menu items or updating task:", error)
-        );
+        .catch((error) => {
+            console.error("Error fetching menu items or updating task:", error);
+        })
+        .finally(() => {
+            // Remove "Fetching order in progress" message
+            const fetchingMessage = document.getElementById(`fetching-message-${taskId}`);
+            if (fetchingMessage) {
+                fetchingMessage.remove();
+            }
+        });
 }
 
 function getTaskButton(taskId, status, orderId) {
     if (status === "Assigned") {
-        return `<button class="btn btn-primary mt-2" onclick="acceptTask(${taskId}, ${orderId})">Accept</button>`;
+        return `<button id="statusBtn-${taskId}" class="btn btn-primary mt-2" onclick="acceptTask(${taskId}, ${orderId})">Accept</button>`;
     } else if (status === "In Progress") {
-        return `<button class="btn btn-success mt-2" onclick="markTaskCompleted(${taskId})">Mark as Completed</button>`;
+        return `<button id="statusBtn-${taskId}" class="btn btn-success mt-2" onclick="markTaskCompleted(${taskId}, ${orderId})">Mark as Completed</button>`;
+    }
+}
+
+// Update the task dynamically when its status changes
+function updateTaskStatus(taskId, newStatus, orderId) {
+    const taskElement = document.getElementById(`task-${taskId}`);
+
+    if (newStatus === "In Progress") {
+        taskElement.innerHTML = `
+            Task ID: ${taskId}, Order ID: ${orderId}, Status: ${newStatus}
+        `;
+        // taskElement.innerHTML += getTaskButton(taskId, newStatus, orderId);
+    } else if (newStatus === "Completed") {
+        taskElement.innerHTML = `
+            Task ID: ${taskId}, Order ID: ${orderId}, Status:
+            <span class="badge bg-success text-white">Completed</span>
+        `;
+    }
+
+    // Dynamically update the button
+    const statusButton = document.getElementById(`statusBtn-${taskId}`);
+    if (newStatus === "In Progress") {
+        statusButton.className = "btn btn-success mt-2";
+        statusButton.textContent = "Mark as Completed";
+        statusButton.setAttribute("onclick", `markTaskCompleted(${taskId})`);
+    } else if (newStatus === "Completed") {
+        if (statusButton) {
+            statusButton.remove(); // Remove the button if the task is completed
+        }
     }
 }
 
 function acceptTask(taskId, orderId) {
-    fetch(`/menu/${orderId}`) // Fetch menu items and ingredients for this order
+    fetch(`/kitchen/task/${taskId}/${orderId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task_status: "In Progress" }),
+    })
         .then((response) => response.json())
         .then((data) => {
-            const taskElement = document.getElementById(`task-${taskId}`);
-            const menuItemsWithIngredients = data.menu_items.map((menuItem) => {
-                const ingredientsForMenuItem = data.ingredients.filter(
-                    (ingredient) => ingredient.menu_item_id === menuItem.id
-                );
+            console.log("Task accepted:", data);
+            fetchMenuItemsAndIngredients(taskId, orderId); // Fetch menu items and ingredients for the accepted task
+            updateTaskStatus(taskId, "In Progress", orderId);// Dynamically update the task status and button
+            // const taskElement = document.getElementById(`task-${taskId}`);
+            // const menuItemsWithIngredients = data.menu_items.map((menuItem) => {
+            //     const ingredientsForMenuItem = data.ingredients.filter(
+            //         (ingredient) => ingredient.menu_item_id === menuItem.id
+            //     );
 
-                const ingredientList = ingredientsForMenuItem
-                    .map(
-                        (ingredient) =>
-                            `<li>${ingredient.name}: ${ingredient.quantity_required} ${ingredient.unit_of_measure}</li>`
-                    )
-                    .join("");
+            //     const ingredientList = ingredientsForMenuItem
+            //         .map(
+            //             (ingredient) =>
+            //                 `<li>${ingredient.name}: ${ingredient.quantity_required} ${ingredient.unit_of_measure}</li>`
+            //         )
+            //         .join("");
 
-                return `
-                    <p><strong>${menuItem.name}</strong></p>
-                    <p>Quantity: ${menuItem.quantity}</p>
-                    <p>Ingredients:</p>
-                    <ul>${ingredientList}</ul>
-                `;
-            });
+            //     return `
+            //         <p><strong>${menuItem.name}</strong></p>
+            //         <p>Quantity: ${menuItem.quantity}</p>
+            //         <p>Ingredients:</p>
+            //         <ul>${ingredientList}</ul>
+            //     `;
+            // });
 
-            taskElement.innerHTML = `
-                Task ID: ${taskId}, Order ID: ${orderId}, Status: In Progress
-                ${menuItemsWithIngredients.join("")}
-                <button class="btn btn-success mt-2" onclick="markTaskCompleted(${taskId})">Mark as Completed</button>
-            `;
+            // taskElement.innerHTML = `
+            //     Task ID: ${taskId}, Order ID: ${orderId}, Status: In Progress
+            //     ${menuItemsWithIngredients.join("")}
+            //     <button class="btn btn-success mt-2" onclick="markTaskCompleted(${taskId})">Mark as Completed</button>
+            // `;
 
-            // Update the task status to "In Progress"
-            fetch(`/kitchen/task/${taskId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ task_status: "In Progress" }),
-            });
+            // // Update the task status to "In Progress"
+            // fetch(`/kitchen/task/${taskId}`, {
+            //     method: "PUT",
+            //     headers: { "Content-Type": "application/json" },
+            //     body: JSON.stringify({ task_status: "In Progress" }),
+            // });
         })
         .catch((error) =>
             console.error("Error fetching menu items or updating task:", error)
         );
 }
 
-function markTaskCompleted(taskId) {
-    fetch(`/kitchen/task/${taskId}`, {
+function markTaskCompleted(taskId,orderId) {
+    fetch(`/kitchen/task/${taskId}/${orderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ task_status: "Completed" }),

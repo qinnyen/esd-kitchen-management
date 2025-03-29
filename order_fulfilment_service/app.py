@@ -17,6 +17,9 @@ ORDER_SERVICE_READ = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v
 ORDER_SERVICE_UPDATE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/UpdateOrder/"
 ORDER_SERVICE_DELETE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/DeleteOrder/"
 ORDER_SERVICE_URL = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/OrdersByCustomerID/"
+KITCHEN_SERVICE_URL = "http://localhost:5008"
+
+
 db = SQLAlchemy(app)
 class OrderFulfillment(db.Model):
     __tablename__ = 'OrderFulfillment'
@@ -115,20 +118,23 @@ def get_order_id(orderID):
 @app.route('/order-fulfillment/customer/<int:customer_id>', methods=['GET'])
 def get_order_status(customer_id):
     try:
-        print("customer_id",customer_id)
+
         response = requests.get(f"{ORDER_SERVICE_URL}/{customer_id}")
         menu_ids = response.json()["MenuItemIDs"]
         menu_ids_list = [int(x) for x in menu_ids.split(",")]
-
         menu_items = []
-        for i in menu_ids_list:
-             menuItems = requests.get(f"{MENU_SERVICE_URL}/menu/item/{i}")
-             menu_items.append(menuItems.json())
+        menuItems = requests.get(f"{MENU_SERVICE_URL}/menu/items/{menu_ids}")
+        menu_items = menuItems.json()
+        
+        # menu_items = []
+        # for i in menu_ids_list:
+        #      menuItems = requests.get(f"{MENU_SERVICE_URL}/menu/item/{i}")
+        #      menu_items.append(menuItems.json())
 
              
         order_response = response.json()
         order_response["MenuItems"] = menu_items
-        print("response",response.json())
+
         if response.status_code == 200:
             return jsonify(order_response), 200
         else:
@@ -136,7 +142,64 @@ def get_order_status(customer_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/order-fulfillment/update-order/<int:order_id>', methods=['PUT'])
+def update_order(order_id):
+    try:
+        data = request.get_json()
+        new_status = data["order_status"]
+        response = requests.put(f"{ORDER_SERVICE_UPDATE}/{order_id}", json={"order_status": new_status})
+        if response.status_code == 200:
+            order = OrderFulfillment.query.filter_by(OrderID=order_id).first()
+            if order:
+                order.OrderStatus = new_status
+                db.session.commit()
+                return jsonify({"message": "Order status updated successfully"}), 200
+            else:
+                return jsonify({"error": "Order not found"}), 404
+        else:
+            return jsonify({"error": "Failed to update order in external service"}), response.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
+@app.route('/order-fulfillment/kitchen/stations', methods=['GET'])
+def kitchen():
+    try:
+        response = requests.get(f"{KITCHEN_SERVICE_URL}/kitchen/stations")
+        if response.status_code == 200:
+            return jsonify(response.json()), 200
+        else:
+            return jsonify({"error": "Failed to fetch kitchen stations"}), response.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/order-fulfillment/kitchen/task/<int:task_id>/<int:order_id>', methods=['PUT'])
+def update_task_progress_with_order(task_id, order_id):
+    try:
+        data = request.get_json()
+        new_status = data["task_status"]
+        
+        # Send the PUT request to the kitchen service
+        kitchen_response = requests.put(f"{KITCHEN_SERVICE_URL}/kitchen/task/{task_id}", json={"task_status": new_status})
+        
+        if kitchen_response.status_code == 200:
+            order = OrderFulfillment.query.filter_by(OrderID=order_id).first()
+            if order:
+                order.OrderStatus = new_status
+                db.session.commit()
+                
+                # Update the order status in the external order service
+                order_res = requests.put(f"{ORDER_SERVICE_UPDATE}/{order_id}", json={"OrderStatus": new_status})
+                if order_res.status_code != 200:
+                    return jsonify({"message": "Task status updated in kitchen but failed to update in order service"}), 500
+            else:
+                return jsonify({"error": "Order not found"}), 404
+
+            # Return the JSON content of the kitchen response
+            return jsonify(kitchen_response.json()), 200
+        else:
+            return jsonify({"error": "Failed to update task status in external service"}), kitchen_response.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5003, debug=True)
