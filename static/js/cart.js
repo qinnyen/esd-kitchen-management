@@ -41,7 +41,7 @@ function checkout() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             customer_id: customerId,
-            menu_item_ids: cartItems.map(item => ({ MenuItemID: item.id, Quantity: item.quantity })),
+            menu_item_ids: cartItems.map(item => ({ MenuItemID: item.id, Quantity: item.quantity,Subtotal: item.price * item.quantity })),
             total_price: cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
         })
     })
@@ -49,6 +49,12 @@ function checkout() {
         .then(data => {
             alert(`Order created successfully! Order ID: ${data.order_id}`);
             localStorage.removeItem('cart');
+            // let test = JSON.stringify({
+            //     customer_id: customerId,
+            //     menu_item_ids: cartItems.map(item => ({ MenuItemID: item.id, Quantity: item.quantity,Subtotal: item.price * item.quantity })),
+            //     total_price: cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
+            // });
+            // console.log(test);
             window.location.href = "/";
         })
         .catch(error => console.error('Error during checkout:', error));

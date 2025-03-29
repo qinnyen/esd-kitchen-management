@@ -57,3 +57,7 @@ function updateCartCount() {
 function viewCart() {
   window.location.href = "/cart";
 }
+
+function viewStatus() {
+  window.location.href = "/status";
+}

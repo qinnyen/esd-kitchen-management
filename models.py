@@ -24,7 +24,7 @@ class MenuIngredient(db.Model):
 class OrderFulfillment(db.Model):
     __bind_key__ = 'order_fulfillment_db'
     __tablename__ = 'OrderFulfillment'
-    OrderID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    OrderID = db.Column(db.Integer, primary_key=True)
     CustomerID = db.Column(db.Integer, nullable=False)
     MenuItemIDs = db.Column(db.String(255), nullable=False)
     TotalPrice = db.Column(db.Float, nullable=False)

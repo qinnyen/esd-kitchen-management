@@ -75,7 +75,9 @@ def track_order(order_id):
 @app.route('/kitchen')
 def kitchen():
     return render_template('kitchen_station.html')
-
+@app.route('/status')
+def status():
+    return render_template('status.html')
 @app.route('/kitchen/stations', methods=['GET'])
 def get_tasks():
     try:
@@ -99,10 +101,23 @@ def update_task_progress(task_id):
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/order-fulfillment/<int:customer_id>', methods=['GET'])
+def get_order_status(customer_id):
+    try:
+        print("customer_id",customer_id)
+        response = requests.get(f"{ORDER_FULFILLMENT_SERVICE_URL}/order-fulfillment/customer/{customer_id}")
+        if response.status_code == 200:
+            print("response",response.json())
+            return jsonify(response.json()), 200
+        else:
+            return jsonify({"error": "Failed to retrieve orders"}), response.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/test-db', methods=['GET'])
 def test_db():
+    print("Testing database connection...")
     try:
         # Query a single record from the database
         menu_item = Menu.query.first()

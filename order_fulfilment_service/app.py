@@ -16,11 +16,11 @@ ORDER_SERVICE_CREATE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest
 ORDER_SERVICE_READ = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/Orders"
 ORDER_SERVICE_UPDATE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/UpdateOrder/"
 ORDER_SERVICE_DELETE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/DeleteOrder/"
-
+ORDER_SERVICE_URL = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/OrdersByCustomerID/"
 db = SQLAlchemy(app)
 class OrderFulfillment(db.Model):
     __tablename__ = 'OrderFulfillment'
-    OrderID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    OrderID = db.Column(db.Integer, primary_key=True)
     CustomerID = db.Column(db.Integer, nullable=False)
     MenuItemIDs = db.Column(db.String(255), nullable=False)
     TotalPrice = db.Column(db.Float, nullable=False)
@@ -42,44 +42,52 @@ class OrderFulfillment(db.Model):
 def create_order():
     try:
         data = request.get_json()
+        print(data)
         customer_id = data["customer_id"]
-        menu_item_ids = ",".join([str(item["MenuItemID"]) for item in data["menu_item_ids"]])  # Convert list of dicts to comma-separated string of ids
+        menu_item_ids = data["menu_item_ids"]  # Convert list of dicts to comma-separated string of ids
+        menu_item_ids2 = ",".join([str(item["MenuItemID"]) for item in menu_item_ids])
         total_price = data["total_price"]
-        station_id = random.choice([101,102,103]) # Assume station ID is provided in the request
-
-        # Create a new order in the database
-        new_order = OrderFulfillment(
-            CustomerID=customer_id,
-            MenuItemIDs=menu_item_ids,
-            TotalPrice=total_price,
-            OrderStatus="Pending",
-            AssignedStationID=station_id
-        )
-        print(menu_item_ids)
-        print(data["menu_item_ids"])
-        db.session.add(new_order)
-        db.session.commit()
         headers = {'Content-Type': 'application/json'}
-        order_data = {
+        ordersData = {
             "CustomerID": customer_id,
-            "MenuItems": data["menu_item_ids"],
-            "TotalPrice": total_price,
-            "OrderStatus": "Pending"
+            "MenuItems": menu_item_ids,
+            "TotalPrice": total_price
         }
-        order_response = requests.post(ORDER_SERVICE_CREATE, json=order_data, headers=headers)
-        # Invoke Kitchen Station Service to assign the task
-        kitchen_station_url = "http://localhost:5008/kitchen/assign"
-        payload = {
-            "order_id": new_order.OrderID,
-            "station_id": station_id
-        }
-        response = requests.post(kitchen_station_url, json=payload)
+        print(ordersData)
+        station_id = random.choice([101,102,103]) # Assume station ID is provided in the request
+        response = requests.post(ORDER_SERVICE_CREATE, json=ordersData, headers=headers)
+        if response.status_code == 200:
+            response.json()
+            print(response.json())
 
-        if response.status_code == 201:
-            return jsonify({"message": "Order created and task assigned successfully", "order_id": new_order.OrderID}), 201
+            # Create a new order in the database
+            new_order = OrderFulfillment(
+                OrderID=response.json(), 
+                CustomerID=customer_id,
+                MenuItemIDs=menu_item_ids2,
+                TotalPrice=total_price,
+                OrderStatus="Pending",
+                AssignedStationID=station_id
+            )
+        
+            db.session.add(new_order)
+            db.session.commit()
+     
+            
+            # Invoke Kitchen Station Service to assign the task
+            kitchen_station_url = "http://localhost:5008/kitchen/assign"
+            payload = {
+                "order_id": new_order.OrderID,
+                "station_id": station_id
+            }
+            response = requests.post(kitchen_station_url, json=payload)
+
+            if response.status_code == 201:
+                return jsonify({"message": "Order created and task assigned successfully", "order_id": new_order.OrderID}), 201
+            else:
+                return jsonify({"message": "Order created but failed to assign task", "order_id": new_order.OrderID}), 500
         else:
-            return jsonify({"message": "Order created but failed to assign task", "order_id": new_order.OrderID}), 500
-
+            return jsonify({"error": "Failed to create order in external service"}), response.status_code
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 @app.route('/order-fulfillment/<int:orderID>', methods=['GET'])
@@ -102,6 +110,32 @@ def get_order_id(orderID):
             return jsonify({"error": f"Menu item with ID {orderID} not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# Endpoint: Retrieve orders by customer ID (Composite Service)
+@app.route('/order-fulfillment/customer/<int:customer_id>', methods=['GET'])
+def get_order_status(customer_id):
+    try:
+        print("customer_id",customer_id)
+        response = requests.get(f"{ORDER_SERVICE_URL}/{customer_id}")
+        menu_ids = response.json()["MenuItemIDs"]
+        menu_ids_list = [int(x) for x in menu_ids.split(",")]
+
+        menu_items = []
+        for i in menu_ids_list:
+             menuItems = requests.get(f"{MENU_SERVICE_URL}/menu/item/{i}")
+             menu_items.append(menuItems.json())
+
+             
+        order_response = response.json()
+        order_response["MenuItems"] = menu_items
+        print("response",response.json())
+        if response.status_code == 200:
+            return jsonify(order_response), 200
+        else:
+            return jsonify({"error": "Failed to retrieve orders"}), response.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 
 if __name__ == "__main__":
