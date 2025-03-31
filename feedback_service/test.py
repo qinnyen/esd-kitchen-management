@@ -1,3 +1,4 @@
+# Used for testing notifications send to email, change the recipient_email
 import pika
 import smtplib
 from email.mime.text import MIMEText
