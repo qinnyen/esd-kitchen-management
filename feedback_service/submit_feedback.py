@@ -1,11 +1,14 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import requests
 
 app = Flask(__name__)
+CORS(app)
+
 
 # Service URLs (replace localhost with container names in Docker later)
-ORDER_SERVICE_URL = "http://localhost:5001/order"  # Order validation API
-FEEDBACK_SERVICE_URL = "http://localhost:5003/feedback"  # Feedback storage API
+ORDER_SERVICE_URL = "http://localhost:5001/order"  # Change localhost to order_service
+FEEDBACK_SERVICE_URL = "http://localhost:5003/feedback"  # Change localhost to feedback_service
 
 @app.route("/submit_feedback", methods=["POST"])
 def submit_feedback():
@@ -49,23 +52,26 @@ def submit_feedback():
                 "description": data.get("description", "")
             }
 
-            fb_response = requests.post(FEEDBACK_SERVICE_URL, json=feedback_payload)
-
-            if fb_response.status_code != 201:
-                return jsonify({
-                    "error": "Feedback Service failed",
-                    "details": fb_response.json()
-                }), 500
-
-        except Exception as e:
+            # Make the POST request to the Feedback Service
+            fb_response = requests.post(FEEDBACK_SERVICE_URL, json=feedback_payload, timeout=5)
+            fb_response.raise_for_status()  # Raise an error for non-2xx responses
+        
+        except requests.exceptions.RequestException as e:
             return jsonify({
                 "error": "Feedback Service unreachable",
                 "details": str(e)
             }), 502
 
         # All good
-        return jsonify({"message": "Feedback submitted successfully"}), 201
-
+        # return jsonify({"message": "Feedback submitted successfully"}), 201
+        return jsonify({
+            "message": "Feedback submitted successfully",
+            "order_id": data.get("order_id"),
+            "menu_item_id": data.get("menu_item_id"),
+            "rating": data.get("rating"),
+            "tags": data.get("tags"),
+            "description": data.get("description")
+        }), 201
     except Exception as e:
         return jsonify({
             "error": "Unexpected error in Submit Feedback Service",
@@ -78,4 +84,4 @@ def health_check():
     return jsonify({"status": "Submit Feedback Service is running"})
 
 if __name__ == "__main__":
-    app.run(port=5005, debug=True)
+    app.run(host='0.0.0.0', port=5005, debug=True)

@@ -5,11 +5,11 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # Install Python dependencies
-COPY requirements.txt .
+COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the app source code
-COPY submit_feedback.py .
+COPY ./submit_feedback.py .
 
 # Expose the port used by the Flask app
 EXPOSE 5005

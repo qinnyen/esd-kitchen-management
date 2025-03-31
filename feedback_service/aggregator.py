@@ -4,7 +4,7 @@ from feedback import db, Feedback, app  # Reuse existing model and DB config
 from sqlalchemy import func
 import pika
 import json
-from decimal import Decimal
+
 
 # Configuration for RabbitMQ connection
 RABBITMQ_HOST = "localhost"
@@ -36,8 +36,8 @@ with app.app_context():
         # Step 4: Publish each low-rated item to the queue
         for item in low_rating_items:
             alert_msg = {
-                "menu_item_id": item.menu_item_id,
-                "average_rating": round(item.avg_rating, 2),
+                "menu_item_id": item[0],  # Access the menu_item_id correctly
+                "average_rating": round(float(item[1]), 2),  # Access the avg_rating correctly and round it
                 "message": "Average weekly rating below threshold"
             }
 

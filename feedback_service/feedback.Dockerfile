@@ -2,6 +2,7 @@
 FROM python:3.10-slim
 
 # Set the working directory inside the container
+# all commands will run the /app directory
 WORKDIR /app
 
 # Copy and install dependencies

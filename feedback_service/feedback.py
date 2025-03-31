@@ -1,17 +1,24 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+
 import sys
 import os
+# ensure python can find the config file
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config import DATABASE_CONFIG
 
 # Initialize Flask app
 app = Flask(__name__)
 
+CORS(app)
+
 # Configure database connection (MySQL, consistent with your team)
 app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DATABASE_CONFIG['feedback_db']['user']}:{DATABASE_CONFIG['feedback_db']['password']}@{DATABASE_CONFIG['feedback_db']['host']}:{DATABASE_CONFIG['feedback_db']['port']}/{DATABASE_CONFIG['feedback_db']['database']}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 299}
+
 
 # Initialize SQLAlchemy ORM
 db = SQLAlchemy(app)
@@ -24,9 +31,13 @@ class Feedback(db.Model):
     rating = db.Column(db.Integer, nullable=False)  # Customer's rating (1–5)
     tags = db.Column(db.String(256))  # Optional tags (stored as comma-separated string)
     description = db.Column(db.Text)  # Optional textual feedback
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)  # Time of submission
+    timestamp = db.Column(db.DateTime, default=datetime.now)  # Time of submission
 
 # API endpoint to create new feedback
+# @app.route('/')
+# def home():
+#     return 'Welcome to the Feedback Service!'
+
 @app.route("/feedback", methods=["POST"])
 def create_feedback():
     try:
@@ -75,4 +86,4 @@ def health_check():
 
 # Run the Flask app (for local development)
 if __name__ == "__main__":
-    app.run(port=5003, debug=True)
+    app.run(host='0.0.0.0', port=5003, debug=True)
