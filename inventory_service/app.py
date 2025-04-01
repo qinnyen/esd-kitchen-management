@@ -110,7 +110,43 @@ schedule_low_stock_check(interval_seconds=5)  # Set to 5 seconds for testing
 #         return jsonify({"message": "Low stock notifications sent successfully."}), 200
 #     except Exception as e:
 #         return jsonify({"error": str(e)}), 500
+@app.route("/inventory/restock/", methods=["POST"])
+def send_restock_request():
+    """
+    Send a restock request to the Restocking Service via AMQP.
+    """
+    try:
+        # Create a connection to RabbitMQ
+        connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
+        channel = connection.channel()
+        
+        # Prepare the message
+        data = request.get_json()
+ 
+        ingredient_name = data.get("ingredient_name")
+        amount_needed = data.get("amount_needed")
+        unit_of_measure = data.get("unit_of_measure")
+        message = {
+        "ingredient_name": ingredient_name,
+        "amount_needed": amount_needed,
+        "unit_of_measure": unit_of_measure
+        }
+        
 
+
+        # Declare the queue (in case it doesn't exist)
+        channel.queue_declare(queue=QUEUE_TO_RESTOCKING)
+
+        # Publish the message to the queue
+        channel.basic_publish(
+            exchange="",
+            routing_key=QUEUE_TO_RESTOCKING,
+            body=json.dumps(message)
+        )
+        print(f" [Inventory Service] Sent to restocking_queue: {message}")
+        connection.close()
+    except Exception as e:
+        print(f" [Inventory Service] Error sending restock request: {e}")
 @app.route('/inventory/<int:ingredient_id>', methods=['GET'])
 def get_ingredient(ingredient_id):
     try:
@@ -214,9 +250,17 @@ def get_batch_ingredients():
         
         ingredients = Inventory.query.filter(Inventory.IngredientID.in_(ingredient_ids)).all()
         result = {
-            str(item.IngredientID): item.QuantityAvailable
+            str(item.IngredientID): {
+                "name": item.IngredientName,
+                "quantity_available": item.QuantityAvailable,
+                "unit_of_measure": item.UnitOfMeasure,
+                "expiry_date": item.ExpiryDate.strftime('%Y-%m-%d'),
+                "reorder_threshold": item.ReorderThreshold
+            }
             for item in ingredients
         }
+        if not result:
+            return jsonify({"error": "No ingredients found for the provided IDs"}), 404
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

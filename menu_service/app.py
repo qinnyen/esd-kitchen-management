@@ -1,3 +1,4 @@
+from datetime import datetime
 from flask import Flask, jsonify
 import sys
 sys.path.append('..')
@@ -27,7 +28,7 @@ class MenuIngredient(db.Model):
     
 ORDER_SERVICE_URL = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/GetOrderItems"  # Order Service URL
 INVENTORY_SERVICE_URL = "http://localhost:5004"  # Inventory Service URL  
-
+ERROR_RESOLUTION_URL = "http://localhost:5013"
 @app.route('/menu/<int:order_id>', methods=['GET'])
 def get_menu_and_ingredients(order_id):
     try:
@@ -97,17 +98,55 @@ def get_all_menu_items():
 
         # Check ingredient availability for each menu item
         result = []
+
         for item in menu_items: 
             is_available = True
             if item.MenuItemID in ingredients_dict:
                 for ingredient in ingredients_dict[item.MenuItemID]:
-                    if inventory_data.get(str(ingredient.IngredientID), 0) < ingredient.QuantityRequired:
+                    available_quantity = inventory_data.get(str(ingredient.IngredientID), {}).get("quantity_available", 0)
+                    
+                    # Determine error type based on inventory data
+                    error_type = None
+                    issue = None  # Variable to store additional info about the issue
+                    
+                    ingredient_name = inventory_data.get(str(ingredient.IngredientID), {}).get("name", "Unknown Ingredient")
+                    if str(ingredient.IngredientID) not in inventory_data:
+                        error_type = 101  # Ingredient Not Found
+                        issue = f"Ingredient: {ingredient_name} (ID: {ingredient.IngredientID}) not found in inventory data."
+                    elif available_quantity < 0:
+                        error_type = 102  # Ingredient Out of Stock
+                        issue = f"Ingredient: {ingredient_name} (ID: {ingredient.IngredientID}) is out of stock."
+                    elif inventory_data.get(str(ingredient.IngredientID), {}).get("expiry_date", False) and \
+                         datetime.strptime(inventory_data[str(ingredient.IngredientID)]["expiry_date"], "%Y-%m-%d").date() < datetime.today().date():
+                        error_type = 103  # Ingredient Expired
+                        issue = f"Ingredient: {ingredient_name} (ID: {ingredient.IngredientID}) has expired."
+                    elif available_quantity < ingredient.QuantityRequired:
+                        error_type = 104  # Insufficient Quantity Available
+                        issue = f"Ingredient: {ingredient_name} (ID: {ingredient.IngredientID}) has insufficient quantity. Required: {ingredient.QuantityRequired}, Available: {available_quantity}."
+                    elif available_quantity < inventory_data.get(str(ingredient.IngredientID), {}).get("reorder_threshold", 0):
+                        error_type = 105  # Reorder Threshold Reached
+                        issue = f"Ingredient: {ingredient_name} (ID: {ingredient.IngredientID}) has reached reorder threshold. Available: {available_quantity}."
+                
+                    # Trigger error resolution service if an error type is identified
+                    if error_type:
                         is_available = False
-                        break
+                        error_data = {
+                            "ErrorType": error_type,
+                            "AdditionalInfo": f"{issue} for Menu Item {item.MenuItemID}",
+                        }
+                        error_response = requests.post(f"{ERROR_RESOLUTION_URL}/error/trigger", json=error_data)
+                        if error_response.status_code != 200:
+                            print(f"Failed to trigger error resolution for item {item.MenuItemID} and ingredient {ingredient.IngredientID}")
+                        # Log the error resolution attempt
+                        print(f"Error resolution triggered for item {item.MenuItemID} and ingredient {ingredient.IngredientID}")
+                    # Break out of the loop if any ingredient is unavailable
+                    break
 
             # Update availability status based on ingredient check
-            item.AvailabilityStatus = is_available
-
+            if not is_available:
+                item.AvailabilityStatus = False
+                print(f"Menu item {item.ItemName} availability status: {item.AvailabilityStatus}")
+            # Append menu item details to the result list
             result.append({
                 "id": item.MenuItemID,
                 "name": item.ItemName,
@@ -115,7 +154,8 @@ def get_all_menu_items():
                 "price": item.Price,
                 "availability_status": item.AvailabilityStatus
             })
-
+        print(f"Menu items fetched successfully: {len(result)} items found.")
+        # Return the result list as part of the response
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -27,6 +27,13 @@ DATABASE_CONFIG = {
         'password': '',
         'database': 'is213_kitchen_station'
     },
+    'error_resolution_db': {
+        'host': 'localhost',
+        'port': 3306,
+        'user': 'root',
+        'password': '',
+        'database': 'is213_error_resolution'
+    },
     'restocking_db': {
         'host': 'localhost',
         'port': 3306,
