@@ -1,13 +1,16 @@
-# This script is meant to be scheduled once a week
-
-from feedback_service.feedback import db, Feedback, app  # Reuse existing model and DB config
 from sqlalchemy import func
 import pika
 import json
+import sys
 import os
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../feedback_service')))
+from feedback import db, Feedback, app
+
+
+
 # Configuration for RabbitMQ connection
-RABBITMQ_HOST = "rabbitmq"  
+RABBITMQ_HOST = "host.docker.internal"  
 QUEUE_NAME = "feedback_alert" #name of the queue
 
 # Create the application context so SQLAlchemy works outside Flask route

@@ -1,17 +1,18 @@
+import json
 import pika
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import json
+import os
 
 
 # Mailgun SMTP Settings
-SMTP_SERVER = 'in-v3.mailjet.com'
-SMTP_PORT = 587  # Use 465 for SSL if needed
-SMTP_USERNAME = '3db3fcf147025c7ab9a24e9e8f75dd62'  # Replace with your Mailjet API key
-SMTP_PASSWORD = '6c0fda3a2887782d20fde64e1c07b043'  # Replace with your Mailjet API secret
-SENDER_EMAIL = 'yuyaoxuan888@gmail.com'  # Use your verified Mailjet sender email
-RECIPIENT_EMAIL = 'yaoxuan.yu.2023@scis.smu.edu.sg'
+SMTP_SERVER = os.getenv('SMTP_SERVER', 'default_smtp_server')  # Default to blank or strong if not set
+SMTP_PORT = os.getenv('SMTP_PORT', 587)  # Default to 587 if not set
+SMTP_USERNAME = os.getenv('SMTP_USERNAME', '')  # Default to blank if not set
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')  # Default to blank if not set
+SENDER_EMAIL = os.getenv('SENDER_EMAIL', '')  # Default to blank if not set
+RECIPIENT_EMAIL = os.getenv('RECIPIENT_EMAIL', '')  # Default to blank if not set
 
 
 # To accumulate alerts
@@ -63,7 +64,7 @@ def callback(ch, method, properties, body):
 
 # Setup RabbitMQ connection
 def listen_to_queue():
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))  # Use the correct RabbitMQ host
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='host.docker.internal'))  
     channel = connection.channel()
 
     # Declare the queue to ensure it exists

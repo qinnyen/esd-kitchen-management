@@ -1,41 +1,36 @@
-version: '4'
+
+
+# Custom network
+networks:
+  esd-net:  
+    driver: bridge
+
 services:
-  web:
-    image: nginx:latest
-    volumes:
-      - ./my-website:/usr/share/nginx/html  # Mount local HTML folder into container
-    ports:
-      - "8080:80"
-      
-  # mysql:
-  #   image: mysql:8.0
-  #   container_name: mysql_db
-  #   restart: always
-  #   environment:
-  #     MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}  # Referencing the variable from .env
-  #     MYSQL_DATABASE: ${MYSQL_DATABASE}
-  #     MYSQL_USER: ${MYSQL_USER}
-  #     MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-  #   ports:
-  #     - "3306:3306"
-  #   volumes:
-  #     - mysql_data:/var/lib/mysql
 
   order_service:
     build:
       context: .  # Change the context to the root of the project
       dockerfile: order_service/Dockerfile
+    environment:
+      dbURL: mysql+mysqlconnector://root@host.docker.internal:3306/is213_order
+      PYTHONUNBUFFERED: 1
     ports:
       - "5001:5001"
+    networks:
+      - esd-net
 
 
   feedback_service:
     build:
       context: .  # Change the context to the root of the project
       dockerfile: feedback_service/Dockerfile
+    environment:
+      dbURL: mysql+mysqlconnector://root@host.docker.internal:3306/is213_feedback
+      PYTHONUNBUFFERED: 1
     ports:
       - "5003:5003"
-
+    networks:
+      - esd-net
 
   submit_feedback_service:
     build:
@@ -46,6 +41,9 @@ services:
     depends_on:
       - order_service
       - feedback_service
+      
+    networks:
+        - esd-net
 
 
   aggregator:
@@ -58,6 +56,8 @@ services:
     depends_on:
       - feedback_service
     command: python aggregator.py  # Make sure this matches your script filename
+    networks:
+        - esd-net
 
   notification:
     build:
@@ -75,6 +75,5 @@ services:
     depends_on:
       - aggregator
     command: python notification.py  # Ensure this matches the filename of your notification script
-
-volumes:
-  mysql_data:
+    networks:
+        - esd-net
