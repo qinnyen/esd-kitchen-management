@@ -1,18 +1,25 @@
-version: '3'
+version: '4'
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: mysql_db
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}  # Referencing the variable from .env
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    ports:
-      - "3306:3306"
+  web:
+    image: nginx:latest
     volumes:
-      - mysql_data:/var/lib/mysql
+      - ./my-website:/usr/share/nginx/html  # Mount local HTML folder into container
+    ports:
+      - "8080:80"
+      
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: mysql_db
+  #   restart: always
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}  # Referencing the variable from .env
+  #     MYSQL_DATABASE: ${MYSQL_DATABASE}
+  #     MYSQL_USER: ${MYSQL_USER}
+  #     MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
 
   order_service:
     build:
@@ -20,8 +27,7 @@ services:
       dockerfile: order_service/Dockerfile
     ports:
       - "5001:5001"
-    depends_on:
-      - mysql
+
 
   feedback_service:
     build:
@@ -29,8 +35,7 @@ services:
       dockerfile: feedback_service/Dockerfile
     ports:
       - "5003:5003"
-    depends_on:
-      - mysql
+
 
   submit_feedback_service:
     build:
@@ -41,7 +46,7 @@ services:
     depends_on:
       - order_service
       - feedback_service
-      - mysql
+
 
   aggregator:
     build:

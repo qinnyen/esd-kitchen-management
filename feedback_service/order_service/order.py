@@ -14,7 +14,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Configure database connection (MySQL, consistent with your team)
-app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DATABASE_CONFIG['orderdb']['user']}:{DATABASE_CONFIG['orderdb']['password']}@{DATABASE_CONFIG['orderdb']['host']}:{DATABASE_CONFIG['orderdb']['port']}/{DATABASE_CONFIG['orderdb']['database']}"
+app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DATABASE_CONFIG['order_db']['user']}:{DATABASE_CONFIG['order_db']['password']}@{DATABASE_CONFIG['order_db']['host']}:{DATABASE_CONFIG['order_db']['port']}/{DATABASE_CONFIG['order_db']['database']}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 299}
 
