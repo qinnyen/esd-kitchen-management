@@ -7,7 +7,6 @@ from pathlib import Path
 SERVICES = [
     {"name": "Restocking Service", "file": "restocking.py", "port": 5005},
     {"name": "Manage Inventory", "file": "manage_inventory.py", "port": 5006},
-    {"name": "API Gateway", "file": "api_gateway.py", "port": 5007},
     {"name": "Fresh Farms", "file": "supplier_freshfarms.py", "port": 5010},
     {"name": "Organic Goods", "file": "supplier_organicgoods.py", "port": 5011},
     {"name": "Dairy Delight", "file": "supplier_dairydelight.py", "port": 5012},

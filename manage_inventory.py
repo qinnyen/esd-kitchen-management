@@ -4,13 +4,23 @@ import json
 import threading
 import requests
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
 
 RABBITMQ_HOST = "localhost"
 QUEUE_FROM_RESTOCKING = "manage_inventory_queue"
 QUEUE_TO_NOTIFICATION = "notification_queue"
-API_GATEWAY_URL = "http://localhost:5007"
+
+# Supplier URLs (moved from api_gateway.py)
+SUPPLIER_URLS = {
+    "Cheese Haven": "http://localhost:5016",
+    "Organic Goods": "http://localhost:5011",
+    "Dairy Delight": "http://localhost:5012",
+    "Lettuce Land": "http://localhost:5017",
+    "Fresh Farms": "http://localhost:5010",
+    "Tomato Express": "http://localhost:5018"
+}
 
 def send_to_queue(queue_name, message):
     connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
@@ -20,46 +30,95 @@ def send_to_queue(queue_name, message):
     connection.close()
     print(f" [Order Supply] Sent to {queue_name}: {message}")
 
+def check_availability(ingredient_name, suppliers):
+    """Replicates the exact JSON structure of the original API Gateway."""
+    available_suppliers = []
+    with ThreadPoolExecutor() as executor:
+        future_to_supplier = {
+            executor.submit(
+                requests.get,
+                f"{SUPPLIER_URLS[supplier]}/check_availability",
+                params={"ingredient_name": ingredient_name},
+                timeout=5
+            ): supplier for supplier in suppliers
+        }
+        for future in as_completed(future_to_supplier, timeout=5):
+            supplier = future_to_supplier[future]
+            try:
+                if future.result().json().get("available"):
+                    available_suppliers.append(supplier)
+            except:
+                continue
+    
+    # Match the original API Gateway's JSON structure
+    return {
+        "available_suppliers": available_suppliers,
+        "ingredient": ingredient_name  # Include for backward compatibility
+    }
+
+def place_order(supplier_name, order_data):
+    try:
+        response = requests.post(
+            f"{SUPPLIER_URLS[supplier_name]}/place_order",
+            json=order_data,
+            timeout=5
+        )
+        result = response.json()
+        result["gateway_status"] = "processed"  # Additional metadata
+        return result
+    except requests.exceptions.Timeout:
+        return {
+            "status": "error",
+            "supplier": supplier_name,
+            "ingredient": order_data.get("ingredient_name"),
+            "message": "Supplier timeout"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "supplier": supplier_name,
+            "ingredient": order_data.get("ingredient_name"),
+            "message": f"Gateway error: {str(e)}"
+        }
+
 def process_order_request(ch, method, properties, body):
     order_data = json.loads(body)
     trace_id = str(uuid.uuid4())
     
     try:
-        # Step 1: Check availability with pre-filtered suppliers
-        availability_response = requests.post(
-            f"{API_GATEWAY_URL}/check_availability",
-            json={
-                "ingredient_name": order_data["ingredient_name"],
-                "suppliers": order_data["suppliers"]
-            },
-            timeout=5
-        ).json()
-        
-        available_suppliers = availability_response.get("available_suppliers", [])
+        availability_response = check_availability(
+            ingredient_name=order_data["ingredient_name"],
+            suppliers=order_data["suppliers"]
+        )
+        available_suppliers = availability_response["available_suppliers"]
         
         if not available_suppliers:
-            raise Exception(f"No available suppliers for {order_data['ingredient_name']}")
+            raise Exception(f"No suppliers available for {order_data['ingredient_name']}")
         
-        # Step 2: Place order with first available supplier
-        order_result = requests.post(
-            f"{API_GATEWAY_URL}/place_order",
-            json={
-                "ingredient_name": order_data["ingredient_name"],
-                "supplier_name": available_suppliers[0],
-                "amount": order_data["amount_needed"],
-                "unit": order_data["unit_of_measure"]
-            },
-            timeout=5
-        ).json()
+        # Try suppliers until one succeeds
+        for supplier in available_suppliers:
+            try:
+                order_result = place_order(
+                    supplier_name=supplier,
+                    order_data={
+                        "ingredient_name": order_data["ingredient_name"],
+                        "amount": order_data["amount_needed"],
+                        "unit": order_data["unit_of_measure"]
+                    }
+                )
+                if order_result.get("status") != "error":
+                    order_result["trace_id"] = trace_id
+                    send_to_queue(QUEUE_TO_NOTIFICATION, order_result)
+                    return
+            except Exception:
+                continue
         
-        # Add trace ID to success responses
-        order_result["trace_id"] = trace_id
-        send_to_queue(QUEUE_TO_NOTIFICATION, order_result)
-        
+        raise Exception(f"All suppliers failed for {order_data['ingredient_name']}")
+    
     except Exception as e:
         send_to_queue(QUEUE_TO_NOTIFICATION, {
             "status": "error",
-            "message": str(e),
+            "message": str(e),  
             "trace_id": trace_id,
             "ingredient": order_data["ingredient_name"],
             "requested_amount": order_data["amount_needed"],

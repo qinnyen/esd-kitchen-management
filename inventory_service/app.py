@@ -98,20 +98,8 @@ def schedule_low_stock_check(interval_seconds=5):  # Default: 5 seconds for test
 # Start the scheduler when the app runs
 schedule_low_stock_check(interval_seconds=5)  # Set to 5 seconds for testing
 
-
-# Endpoint to manually trigger weekly low stock notifications for restocking service, redundant when we have scheduler
-# @app.route('/inventory/notify_low_stock', methods=['POST'])
-# def notify_low_stock():
-#     """
-#     Endpoint to trigger low stock notifications.
-#     """
-#     try:
-#         check_and_notify_low_stock()
-#         return jsonify({"message": "Low stock notifications sent successfully."}), 200
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
 @app.route("/inventory/restock/", methods=["POST"])
-def send_restock_request():
+def send_restock_request(): #Rename pls <3 otherwise my one at the top wont work
     """
     Send a restock request to the Restocking Service via AMQP.
     """
@@ -147,6 +135,7 @@ def send_restock_request():
         connection.close()
     except Exception as e:
         print(f" [Inventory Service] Error sending restock request: {e}")
+
 @app.route('/inventory/<int:ingredient_id>', methods=['GET'])
 def get_ingredient(ingredient_id):
     try:
