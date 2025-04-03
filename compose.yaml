@@ -1,0 +1,138 @@
+volumes:
+  kitchen_management_data:
+    name: kitchen_management_data
+  rabbitmq_data:
+    name: rabbitmq_data
+
+networks:
+  esd-net:
+    driver: bridge
+    name: esd-net
+
+services:
+
+  ####################################
+  # RabbitMQ: The messaging broker   
+  ####################################
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: esd-rabbit
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes: 
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq:/app
+    networks:
+      - esd-net
+
+  ####################################
+  # Flask Application: Kitchen Management
+  ####################################
+  flask-app:
+    build:
+      context: .
+      dockerfile: Dockerfile  # Ensure you have a Dockerfile for the Flask app
+    container_name: flask-app
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - MENU_SERVICE_URL=http://host.docker.internal:5002
+      - ORDER_FULFILLMENT_SERVICE_URL=http://host.docker.internal:5020
+
+    volumes:
+      - .:/app  # Mount the current directory to the container
+      - ./docker_config.py:/app/config.py
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  order-fulfillment-service:
+    build:
+      context: ./order_fulfilment_service
+      dockerfile: Dockerfile
+    container_name: order-fulfillment-service
+    ports:
+      - "5020:5020"
+    environment:
+      - FLASK_ENV=development
+      - MENU_SERVICE_URL=http://host.docker.internal:5002
+      - KITCHEN_SERVICE_URL=http://host.docker.internal:5008
+    volumes:
+      - ./order_fulfilment_service:/app
+      - ./docker_config.py:/app/config.py
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  menu-service:
+    build:
+      context: ./menu_service
+      dockerfile: Dockerfile
+    container_name: menu-service
+    ports:
+      - "5002:5002"
+    environment:
+      - FLASK_ENV=development
+      - INVENTORY_SERVICE=http://host.docker.internal:5004
+      - ERROR_RESOLUTION_SERVICE_URL=http://host.docker.internal:5013
+    volumes:
+      - ./menu_service:/app
+      - ./docker_config.py:/app/config.py
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  inventory-service:
+    build:
+      context: ./inventory_service
+      dockerfile: Dockerfile
+    container_name: inventory-service
+    ports:
+      - "5004:5004"
+    environment:
+      - FLASK_ENV=development
+    volumes:
+      - ./inventory_service:/app
+      - ./docker_config.py:/app/config.py
+    networks:
+      - esd-net  
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  kitchen-station-service:
+    build:
+      context: ./kitchen_station_service
+      dockerfile: Dockerfile
+    container_name: kitchen-station-service
+    ports:
+      - "5008:5008"
+    environment:
+      - FLASK_ENV=development
+     
+    volumes:
+      - ./kitchen_station_service:/app
+      - ./docker_config.py:/app/config.py
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  error-resolution-service:
+    build:
+      context: ./error_resolution_service
+      dockerfile: Dockerfile
+    container_name: error-resolution-service
+    ports:
+      - "5013:5013"
+    environment:
+      - FLASK_ENV=development
+      - INVENTORY_SERVICE=http://host.docker.internal:5004
+    volumes:
+      - ./error_resolution_service:/app
+      - ./docker_config.py:/app/config.py
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    

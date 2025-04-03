@@ -1,7 +1,8 @@
 from datetime import datetime
 from flask import Flask, jsonify
 import sys
-sys.path.append('..')
+import os
+# sys.path.append('..')
 from config import DATABASE_CONFIG
 from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
@@ -27,8 +28,10 @@ class MenuIngredient(db.Model):
     __table_args__ = (db.PrimaryKeyConstraint('MenuItemID', 'IngredientID'),)
     
 ORDER_SERVICE_URL = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/GetOrderItems"  # Order Service URL
-INVENTORY_SERVICE_URL = "http://localhost:5004"  # Inventory Service URL  
-ERROR_RESOLUTION_URL = "http://localhost:5013"
+# INVENTORY_SERVICE_URL = "http://localhost:5004"  # Inventory Service URL  
+# ERROR_RESOLUTION_URL = "http://localhost:5013"
+INVENTORY_SERVICE_URL = os.getenv("INVENTORY_SERVICE_URL", "http://host.docker.internal:5004") # Inventory Service URL  
+ERROR_RESOLUTION_URL = os.getenv("ERROR_RESOLUTION_URL", "http://host.docker.internal:5013")
 @app.route('/menu/<int:order_id>', methods=['GET'])
 def get_menu_and_ingredients(order_id):
     try:
@@ -93,7 +96,7 @@ def get_all_menu_items():
 
         # Batch request to Inventory Service
         ingredient_ids = {ingredient.IngredientID for ingredient in menu_ingredients}
-        inventory_response = requests.post("http://localhost:5004/inventory/batch", json={"ingredient_ids": list(ingredient_ids)})
+        inventory_response = requests.post(f"{INVENTORY_SERVICE_URL}/inventory/batch", json={"ingredient_ids": list(ingredient_ids)})
         inventory_data = inventory_response.json() if inventory_response.status_code == 200 else {}
 
         # Check ingredient availability for each menu item
@@ -178,20 +181,20 @@ def get_menu_item_details(itemID):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    try:
-        itemIDs = [int(id.strip()) for id in itemIDs.split(",")]
-        menu_items = Menu.query.filter(Menu.MenuItemID.in_(itemIDs)).all()
-        result = []
-        for item in menu_items:
-            result.append({
-                "id": item.MenuItemID,
-                "name": item.ItemName,
-                "description": item.Description,
-                "price": item.Price,
-                "availability_status": item.AvailabilityStatus
-            })
-        return jsonify(result), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    # try:
+    #     itemIDs = [int(id.strip()) for id in itemIDs.split(",")]
+    #     menu_items = Menu.query.filter(Menu.MenuItemID.in_(itemIDs)).all()
+    #     result = []
+    #     for item in menu_items:
+    #         result.append({
+    #             "id": item.MenuItemID,
+    #             "name": item.ItemName,
+    #             "description": item.Description,
+    #             "price": item.Price,
+    #             "availability_status": item.AvailabilityStatus
+    #         })
+    #     return jsonify(result), 200
+    # except Exception as e:
+    #     return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5002, debug=True)

@@ -3,12 +3,14 @@ import requests
 from flask_sqlalchemy import SQLAlchemy
 from config import DATABASE_CONFIG
 from models import db,Menu,MenuIngredient,OrderFulfillment
-
+import os
 app = Flask(__name__)
 
 # URLs for external services
-ORDER_FULFILLMENT_SERVICE_URL = "http://localhost:5003"
-MENU_SERVICE_URL = "http://localhost:5002"
+# ORDER_FULFILLMENT_SERVICE_URL = "http://localhost:5020"
+# MENU_SERVICE_URL = "http://localhost:5002"
+MENU_SERVICE_URL = os.getenv("MENU_SERVICE_URL", "http://host.docker.internal:5002")
+ORDER_FULFILLMENT_SERVICE_URL = os.getenv("ORDER_FULFILLMENT_SERVICE_URL", "http://host.docker.internal:5020")
 # Initialize SQLAlchemy instances
 # Configuration for Menu Service database
 app.config['SQLALCHEMY_BINDS'] = {
@@ -142,4 +144,4 @@ def test_db():
 def cart():
     return render_template('cart.html')
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

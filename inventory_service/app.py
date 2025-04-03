@@ -7,7 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 import atexit
 
-sys.path.append('..')
+# sys.path.append('..')
 from config import DATABASE_CONFIG
 
 app = Flask(__name__)
@@ -84,7 +84,7 @@ def check_and_notify_low_stock():
             print(f" [Inventory Service] Error checking low stock: {e}")
 
 # Schedule the job (adjust interval for testing/production)
-def schedule_low_stock_check(interval_seconds=5):  # Default: 5 seconds for testing
+def schedule_low_stock_check(interval_seconds=100000000000000000000):  # Default: 5 seconds for testing
     """Schedule the low-stock check job with a configurable interval."""
     trigger = IntervalTrigger(seconds=interval_seconds)  # Change to `weeks=1` for production
     scheduler.add_job(
@@ -96,10 +96,10 @@ def schedule_low_stock_check(interval_seconds=5):  # Default: 5 seconds for test
     print(f" [Scheduler] Low-stock check scheduled every {interval_seconds} second(s).")
 
 # Start the scheduler when the app runs
-schedule_low_stock_check(interval_seconds=5)  # Set to 5 seconds for testing
+# schedule_low_stock_check(interval_seconds=5)  # Set to 5 seconds for testing
 
 @app.route("/inventory/restock/", methods=["POST"])
-def send_restock_request(): #Rename pls <3 otherwise my one at the top wont work
+def send_restock_request_http(): 
     """
     Send a restock request to the Restocking Service via AMQP.
     """
@@ -107,7 +107,6 @@ def send_restock_request(): #Rename pls <3 otherwise my one at the top wont work
         # Create a connection to RabbitMQ
         connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
         channel = connection.channel()
-        
         # Prepare the message
         data = request.get_json()
  
@@ -133,8 +132,10 @@ def send_restock_request(): #Rename pls <3 otherwise my one at the top wont work
         )
         print(f" [Inventory Service] Sent to restocking_queue: {message}")
         connection.close()
+        return jsonify({"success": True, "message": "Restock request sent successfully"}), 200
     except Exception as e:
         print(f" [Inventory Service] Error sending restock request: {e}")
+        return jsonify({"success": False, "message": f"Error sending restock request: {str(e)}"}), 500
 
 @app.route('/inventory/<int:ingredient_id>', methods=['GET'])
 def get_ingredient(ingredient_id):
