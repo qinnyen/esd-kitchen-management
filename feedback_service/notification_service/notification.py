@@ -192,7 +192,8 @@ def start_amqp_consumer():
             break
 
 if __name__ == "__main__":
-    listen_to_queue()
+    # listen_to_queue()
+    threading.Thread(target=listen_to_queue, daemon=True).start() #see if this works
     # Start RabbitMQ consumer in a separate thread
     threading.Thread(target=start_amqp_consumer, daemon=True).start()
-    app.run(host='0.0.0.0', port=5020)
+    app.run(host='0.0.0.0', port=5021)
