@@ -6,6 +6,7 @@ import json
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 import atexit
+import threading
 
 # sys.path.append('..')
 from config import DATABASE_CONFIG
@@ -255,5 +256,46 @@ def get_batch_ingredients():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# RFID event handler, process RFID events and updates inventory_service, updates restocking if needed
+def handle_rfid_event(ch, method, properties, body):
+    try:
+        data = json.loads(body)
+        if data.get("event_type") == "ingredient_used":
+            ingredient_id = data["ingredient_id"]
+            quantity_used = data["quantity_used"]
+
+            with app.app_context():
+                ingredient = Inventory.query.filter_by(IngredientID=ingredient_id).first()
+                if ingredient:
+                    ingredient.QuantityAvailable -= quantity_used
+                    db.session.commit()
+                    print(f"[Inventory] Updated stock for IngredientID {ingredient_id}: -{quantity_used}")
+
+                    # Trigger restocking if needed
+                    if ingredient.QuantityAvailable <= ingredient.ReorderThreshold:
+                        send_restock_request(
+                            ingredient_name=ingredient.IngredientName,
+                            amount_needed=ingredient.ReorderThreshold - ingredient.QuantityAvailable,
+                            unit_of_measure=ingredient.UnitOfMeasure
+                        )
+                else:
+                    print(f"[Inventory] Ingredient ID {ingredient_id} not found.")
+
+    except Exception as e:
+        print(f"[Inventory] Error processing RFID event: {e}")
+
+# consumer starter, listens for RFID events
+def start_rfid_consumer():
+    try:
+        connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
+        channel = connection.channel()
+        channel.queue_declare(queue="rfid_events_queue", durable=True)
+        channel.basic_consume(queue="rfid_events_queue", on_message_callback=handle_rfid_event, auto_ack=True)
+        print("[Inventory] RFID consumer started.")
+        channel.start_consuming()
+    except Exception as e:
+        print(f"[Inventory] RFID consumer failed: {e}")
+
 if __name__ == "__main__":
+    threading.Thread(target=start_rfid_consumer, daemon=True).start()  #start RFID event consumer in background
     app.run(host="0.0.0.0", port=5004, debug=False) #Debug set to false to prevent duplication of cron jobs
