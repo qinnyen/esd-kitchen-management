@@ -2,15 +2,15 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import sys
-
+import os
 import requests
-sys.path.append('..')
+# sys.path.append('..')
 from config import DATABASE_CONFIG
 app = Flask(__name__)
 # Configure Menu Service database
 app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DATABASE_CONFIG['error_resolution_db']['user']}:{DATABASE_CONFIG['error_resolution_db']['password']}@{DATABASE_CONFIG['error_resolution_db']['host']}:{DATABASE_CONFIG['error_resolution_db']['port']}/{DATABASE_CONFIG['error_resolution_db']['database']}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-INVENTORY_SERVICE_URL = "http://localhost:5004"  # Inventory Service URL for REST API calls
+INVENTORY_SERVICE_URL = os.getenv("INVENTORY_SERVICE_URL", "http://host.docker.internal:5004")  # Inventory Service URL for REST API calls
 db = SQLAlchemy(app)
 
 # Define ErrorResolution model
@@ -149,6 +149,4 @@ def get_error_details(error_id):
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()  # Create tables if they don't exist
     app.run(host='0.0.0.0', port=5013, debug=True)

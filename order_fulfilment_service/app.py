@@ -1,23 +1,26 @@
 from flask import Flask, request, jsonify
 import requests
 import sys
-sys.path.append('..')
+# sys.path.append('..')
 from config import DATABASE_CONFIG
 from flask_sqlalchemy import SQLAlchemy
 import random
+import os
 
 app = Flask(__name__)
 # Configure Menu Service database
 app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DATABASE_CONFIG['order_fulfillment_db']['user']}:{DATABASE_CONFIG['order_fulfillment_db']['password']}@{DATABASE_CONFIG['order_fulfillment_db']['host']}:{DATABASE_CONFIG['order_fulfillment_db']['port']}/{DATABASE_CONFIG['order_fulfillment_db']['database']}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # URL for Menu Service
-MENU_SERVICE_URL = "http://localhost:5002"
+# MENU_SERVICE_URL = "http://localhost:5002"
 ORDER_SERVICE_CREATE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/CreateOrder/"
 ORDER_SERVICE_READ = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/Orders"
 ORDER_SERVICE_UPDATE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/UpdateOrder/"
 ORDER_SERVICE_DELETE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/DeleteOrder/"
 ORDER_SERVICE_URL = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/OrdersByCustomerID/"
-KITCHEN_SERVICE_URL = "http://localhost:5008"
+# KITCHEN_SERVICE_URL = "http://localhost:5008"
+MENU_SERVICE_URL = os.getenv("MENU_SERVICE_URL", "http://host.docker.internal:5002")
+KITCHEN_SERVICE_URL = os.getenv("KITCHEN_SERVICE_URL", "http://host.docker.internal:5008")
 
 
 db = SQLAlchemy(app)
@@ -45,7 +48,7 @@ class OrderFulfillment(db.Model):
 def create_order():
     try:
         data = request.get_json()
-        print(data)
+        # print(data)
         customer_id = data["customer_id"]
         menu_item_ids = data["menu_item_ids"]  # Convert list of dicts to comma-separated string of ids
         menu_item_ids2 = ",".join([str(item["MenuItemID"]) for item in menu_item_ids])
@@ -61,7 +64,7 @@ def create_order():
         response = requests.post(ORDER_SERVICE_CREATE, json=ordersData, headers=headers)
         if response.status_code == 200:
             response.json()
-            print(response.json())
+            # print(response.json())
 
             # Create a new order in the database
             new_order = OrderFulfillment(
@@ -78,7 +81,7 @@ def create_order():
      
             
             # Invoke Kitchen Station Service to assign the task
-            kitchen_station_url = "http://localhost:5008/kitchen/assign"
+            kitchen_station_url = f"{KITCHEN_SERVICE_URL}/kitchen/assign"
             payload = {
                 "order_id": new_order.OrderID,
                 "station_id": station_id
@@ -202,4 +205,4 @@ def update_task_progress_with_order(task_id, order_id):
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5003, debug=True)
+    app.run(host="0.0.0.0", port=5020, debug=True)

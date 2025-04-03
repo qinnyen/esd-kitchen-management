@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import sys
-sys.path.append('..')
+# sys.path.append('..')
 from config import DATABASE_CONFIG  
-from models import db, KitchenStation
+# from models import db, KitchenStation
 from datetime import datetime
 app = Flask(__name__)
 

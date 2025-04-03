@@ -1,134 +1,66 @@
 from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
 import pika
 import json
-import requests
-from config import DATABASE_CONFIG
-
-INVENTORY_SERVICE_URL = "http://inventory_service:5004/inventory"
-RABBITMQ_HOST = "rabbitmq"
-LOW_STOCK_THRESHOLD = 10  
+import os
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DATABASE_CONFIG['rfid_db']['user']}:{DATABASE_CONFIG['rfid_db']['password']}@{DATABASE_CONFIG['rfid_db']['host']}:{DATABASE_CONFIG['rfid_db']['port']}/{DATABASE_CONFIG['rfid_db']['database']}"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# RabbitMQ Configuration
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "host.docker.internal")
+RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))
+RFID_EVENTS_QUEUE = "rfid_events_queue"
 
-db = SQLAlchemy(app)
-
-# Logs each scan with details of ingredient, station, and time
-class RFIDEvent(db.Model):
-    __bind_key__ = 'rfid'
-    __tablename__ = "RFIDEvent"
-    id = db.Column(db.Integer, primary_key=True)
-    ingredient_id = db.Column(db.Integer, nullable=False)
-    station_id = db.Column(db.Integer, nullable=False)
-    action = db.Column(db.String(50), nullable=False)  # e.g. "used", "picked"
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-
-# Used to fetch the current stock of ingredients for decision-making
-class Inventory(db.Model):
-    __bind_key__ = 'inventory'
-    __tablename__ = "Ingredient"
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    quantity_available = db.Column(db.Float, nullable=False)
-    unit_of_measure = db.Column(db.String(20), nullable=False)
-
-# Log RFID Scan + Update Inventory + Check for Low Stock
-@app.route("/rfid/scan", methods=["POST"])
-def scan_rfid():
+# Helper: Emit AMQP Event
+def emit_rfid_event(ingredient_id, quantity_used):
     """
-    Accepts a scan event in this format:
-    {
-        "ingredient_id": 1,
-        "station_id": 101,
-        "action": "used"
-    }
-    Logs the event, checks the ingredient level, and alerts if stock is low.
+    Publishes an 'ingredient_used' event to the RFID event queue.
+    """
+    try:
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT))
+        channel = connection.channel()
+        channel.queue_declare(queue=RFID_EVENTS_QUEUE, durable=True)
+
+        event_payload = {
+            "event_type": "ingredient_used",
+            "ingredient_id": ingredient_id,
+            "quantity_used": quantity_used
+        }
+
+        channel.basic_publish(
+            exchange='',
+            routing_key=RFID_EVENTS_QUEUE,
+            body=json.dumps(event_payload),
+            properties=pika.BasicProperties(delivery_mode=2)  # make message persistent
+        )
+
+        print(f"[RFID] Event published: {event_payload}")
+        connection.close()
+        return True
+    except Exception as e:
+        print(f"[RFID] Failed to publish event: {e}")
+        return False
+
+# API Route: Simulate RFID Scan
+@app.route("/rfid/scan", methods=["POST"])
+def scan_rfid_tag():
+    """
+    Simulates an RFID tag scan. 
+    Expects JSON: { "ingredient_id": int, "quantity_used": int }
     """
     try:
         data = request.get_json()
-        required = ["ingredient_id", "station_id", "action"]
-        missing = [f for f in required if f not in data]
+        ingredient_id = int(data["ingredient_id"])
+        quantity_used = int(data.get("quantity_used", 1))  # Default to 1 if not provided
 
-        if missing:
-            return jsonify({"error": "Missing field(s)", "fields": missing}), 400
+        success = emit_rfid_event(ingredient_id, quantity_used)
 
-        # Log the scan
-        event = RFIDEvent(
-            ingredient_id=data["ingredient_id"],
-            station_id=data["station_id"],
-            action=data["action"]
-        )
-        db.session.add(event)
-        db.session.commit()
-
-        # If action is "used", check inventory via HTTP
-        if data["action"].lower() == "used":
-            try:
-                response = requests.get(f"{INVENTORY_SERVICE_URL}/{data['ingredient_id']}")
-                if response.status_code == 200:
-                    inventory = response.json()
-                    new_qty = inventory["quantity_available"] - 1  # Simulated deduction
-
-                    print(f"[RFID] {inventory['name']} used. New (simulated) qty: {new_qty}")
-
-                    # 3. Trigger LowStockAlert if under threshold
-                    if new_qty <= LOW_STOCK_THRESHOLD:
-                        send_low_stock_alert(
-                            ingredient_id=inventory["id"],
-                            ingredient_name=inventory["name"],
-                            quantity=new_qty,
-                            threshold=LOW_STOCK_THRESHOLD
-                        )
-                else:
-                    print(f"[Inventory API Error] Status {response.status_code}")
-            except Exception as e:
-                print(f"[Inventory API Error] {e}")
-
-        return jsonify({"message": "RFID scan processed"}), 201
+        if success:
+            return jsonify({"message": "RFID event sent to inventory service."}), 200
+        else:
+            return jsonify({"error": "Failed to emit RFID event."}), 500
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-def send_low_stock_alert(ingredient_id, ingredient_name, quantity, threshold):
-    """
-    Sends a message to RabbitMQ if an ingredient is detected to be low.
-    The consumer (e.g., Notification or Restocking Service) can handle it.
-    """
-    try:
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
-        channel = connection.channel()
-
-        # Declare the alert queue (idempotent)
-        channel.queue_declare(queue='low_stock_alert', durable=True)
-
-        # Create the alert message
-        alert = {
-            "ingredient_id": ingredient_id,
-            "ingredient_name": ingredient_name,
-            "quantity": quantity,
-            "threshold": threshold,
-            "message": "Low stock detected via RFID"
-        }
-
-        # Send the alert message
-        channel.basic_publish(
-            exchange='',
-            routing_key='low_stock_alert',
-            body=json.dumps(alert),
-            properties=pika.BasicProperties(delivery_mode=2)  # Persistent message
-        )
-        print(f"📤 Alert sent for {ingredient_name}")
-        connection.close()
-    except Exception as e:
-        print(f"[Alert Error] Failed to send low stock alert: {e}")
-
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"status": "RFID Scanning Service is running"}), 200
+        return jsonify({"error": str(e)}), 400
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5010, debug=True)
+    app.run(host="0.0.0.0", port=5012, debug=True)
