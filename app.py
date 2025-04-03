@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from config import DATABASE_CONFIG
 from models import db,Menu,MenuIngredient,OrderFulfillment
 import os
+import stripe
 app = Flask(__name__)
 
 # URLs for external services
@@ -143,5 +144,39 @@ def test_db():
 @app.route('/cart')
 def cart():
     return render_template('cart.html')
+@app.route('/payment')
+def payment():
+    return render_template('payment.html')
+
+# Stripe API keys (replace with your actual keys)
+STRIPE_SECRET_KEY = "sk_test_51R9mXXBOyJ3Yy6tJlo4Q6UZQOFUAoaz83w1FIwMHWfJyU19k9rDGSV5qPiVHtrP5NDBKtUpcp1hFtPfb93lYqUun00d1KhOP0u"
+STRIPE_PUBLISHABLE_KEY = "pk_test_51R9mXXBOyJ3Yy6tJ0jDBIoEzjntIOyMgvAWs7vzpzweYivhW0pMZIJcagl2gG0hizGLK1B6CaB2MHlcVTGcRU55p00ztObLIWW"
+
+stripe.api_key = STRIPE_SECRET_KEY
+
+@app.route('/create-payment-intent', methods=['POST'])
+def create_payment_intent():
+    try:
+        data = request.get_json()
+
+        # Retrieve amount and currency from the request
+        amount = data['amount']  # Amount in cents (e.g., $10.00 = 1000)
+        currency = data.get('currency', 'sgd')  # Default to USD
+
+        # Create a PaymentIntent
+        intent = stripe.PaymentIntent.create(
+            amount=amount,
+            currency=currency,
+            payment_method_types=["card"],  # Accept card payments
+        )
+
+        return jsonify({
+            "clientSecret": intent['client_secret']
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

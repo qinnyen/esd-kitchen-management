@@ -48,6 +48,7 @@ function checkout() {
         .then(response => response.json())
         .then(data => {
             alert(`Order created successfully! Order ID: ${data.order_id}`);
+            window.location.href = `/payment?totalPrice=${cart.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2)}`;
             localStorage.removeItem('cart');
             // let test = JSON.stringify({
             //     customer_id: customerId,
@@ -55,7 +56,7 @@ function checkout() {
             //     total_price: cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
             // });
             // console.log(test);
-            window.location.href = "/";
+            // window.location.href = "/";
         })
         .catch(error => console.error('Error during checkout:', error));
 }
