@@ -154,7 +154,7 @@ def process_notification_order(ch, method, properties, body_order):
 
 # Setup RabbitMQ connection
 def listen_to_queue():
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))  # Use the correct RabbitMQ host
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='host.docker.internal'))  
     channel = connection.channel()
 
     # Declare the queue to ensure it exists
