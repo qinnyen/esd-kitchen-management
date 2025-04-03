@@ -48,8 +48,13 @@ function checkout() {
         .then(response => response.json())
         .then(data => {
             alert(`Order created successfully! Order ID: ${data.order_id}`);
-            window.location.href = `/payment?totalPrice=${cart.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2)}`;
-            localStorage.removeItem('cart');
+            let totalPrice = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+            localStorage.removeItem('cart'); // Clear the cart after checkout
+            // Redirect to payment page with total price as query parameter
+            setTimeout(() => {
+                window.location.href = `/payment?totalPrice=${totalPrice.toFixed(2)}`;
+            }, 0);
+        
             // let test = JSON.stringify({
             //     customer_id: customerId,
             //     menu_item_ids: cartItems.map(item => ({ MenuItemID: item.id, Quantity: item.quantity,Subtotal: item.price * item.quantity })),

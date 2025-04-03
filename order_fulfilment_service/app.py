@@ -48,7 +48,7 @@ class OrderFulfillment(db.Model):
 def create_order():
     try:
         data = request.get_json()
-        print(data)
+        # print(data)
         customer_id = data["customer_id"]
         menu_item_ids = data["menu_item_ids"]  # Convert list of dicts to comma-separated string of ids
         menu_item_ids2 = ",".join([str(item["MenuItemID"]) for item in menu_item_ids])
@@ -64,7 +64,7 @@ def create_order():
         response = requests.post(ORDER_SERVICE_CREATE, json=ordersData, headers=headers)
         if response.status_code == 200:
             response.json()
-            print(response.json())
+            # print(response.json())
 
             # Create a new order in the database
             new_order = OrderFulfillment(
@@ -81,7 +81,7 @@ def create_order():
      
             
             # Invoke Kitchen Station Service to assign the task
-            kitchen_station_url = "http://localhost:5008/kitchen/assign"
+            kitchen_station_url = f"{KITCHEN_SERVICE_URL}/kitchen/assign"
             payload = {
                 "order_id": new_order.OrderID,
                 "station_id": station_id

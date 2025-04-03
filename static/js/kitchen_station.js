@@ -131,7 +131,7 @@ function updateTaskStatus(taskId, newStatus, orderId) {
     if (newStatus === "In Progress") {
         statusButton.className = "btn btn-success mt-2";
         statusButton.textContent = "Mark as Completed";
-        statusButton.setAttribute("onclick", `markTaskCompleted(${taskId})`);
+        statusButton.setAttribute("onclick", `markTaskCompleted(${taskId}, ${orderId})`);
     } else if (newStatus === "Completed") {
         if (statusButton) {
             statusButton.remove(); // Remove the button if the task is completed

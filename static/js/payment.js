@@ -50,6 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             paymentMessage.className = "alert alert-success"; // Bootstrap success styling
             paymentMessage.textContent = "Payment successful!";
             console.log("PaymentIntent:", paymentIntent);
+            window.location.href = "/"; // Redirect to index page
         }
     });
 });
