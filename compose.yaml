@@ -135,4 +135,19 @@ services:
       - esd-net
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    
+  rfid-scanning-service:
+    build:
+      context: ./RFID_scanning_service
+      dockerfile: Dockerfile
+    container_name: rfid-scanning-service
+    ports:
+      - "5012:5012"
+    environment:
+      - FLASK_ENV=development
+    volumes:
+      - ./RFID_scanning_service:/app
+      - ./docker_config.py:/app/config.py
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
