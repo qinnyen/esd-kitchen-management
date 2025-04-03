@@ -6,16 +6,17 @@ from email.mime.multipart import MIMEMultipart
 import json
 import threading
 import time  # Add this with other imports
+import os
 
 QUEUE_NAME = "notification_queue"
 
 # Mailgun SMTP Settings
-SMTP_SERVER = 'in-v3.mailjet.com'
-SMTP_PORT = 587  # Use 465 for SSL if needed
-SMTP_USERNAME = '3db3fcf147025c7ab9a24e9e8f75dd62'  # Replace with your Mailjet API key
-SMTP_PASSWORD = '6c0fda3a2887782d20fde64e1c07b043'  # Replace with your Mailjet API secret
-SENDER_EMAIL = 'yuyaoxuan888@gmail.com'  # Use your verified Mailjet sender email
-RECIPIENT_EMAIL = 'yaoxuan.yu.2023@scis.smu.edu.sg'
+SMTP_SERVER = os.getenv('SMTP_SERVER', 'default_smtp_server')  # Default to blank or strong if not set
+SMTP_PORT = os.getenv('SMTP_PORT', 587)  # Default to 587 if not set
+SMTP_USERNAME = os.getenv('SMTP_USERNAME', '')  # Default to blank if not set
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')  # Default to blank if not set
+SENDER_EMAIL = os.getenv('SENDER_EMAIL', '')  # Default to blank if not set
+RECIPIENT_EMAIL = os.getenv('RECIPIENT_EMAIL', '')  # Default to blank if not set
 
 app = Flask(__name__)
 
@@ -93,58 +94,60 @@ def callback(ch, method, properties, body):
 def process_notification_order(ch, method, properties, body_order):
     try:
         notification_data = json.loads(body_order)
-        print(f" [Order Notification] Received: {notification_data}")
-        
-        # Add the order to the batch
         order_batch.append(notification_data)
 
-        # If we have at least one order in the batch, process them
-        if len(order_batch) >= 1:
-            # Separate successful and failed orders
-            success_orders = []
-            failed_orders = []
-            
-            for order in order_batch:
-                if order.get("status") == "error":
-                    failed_orders.append(order)
-                else:
-                    success_orders.append(order)
+        print(order_batch)
+        # Early exit if not enough orders
+        if len(order_batch) < 3:
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
+        
+        # Separate successful and failed orders
+        success_orders = []
+        failed_orders = []
+        
+        for order in order_batch:
+            if order.get("status") == "error":
+                failed_orders.append(order)
+            else:
+                success_orders.append(order)
 
-            # Build email content
-            body_order = ""
+        # Build email content
+        body_order = ""
 
-            # Add successful orders section
-            if success_orders:
-                body_order += "Status: Success\n"
-                body_order += "================\n"
-                for order in success_orders:
-                    body_order += f"Supplier: {order.get('supplier', 'N/A')}\n"
-                    body_order += f"Ingredient: {order.get('ingredient', 'N/A')}\n"
-                    body_order += f"Amount: {order.get('requested_amount', 'N/A')} {order.get('requested_unit', '')}\n"
-                    body_order += f"Trace ID: {order.get('trace_id', 'N/A')}\n"
-                    body_order += f"Message: {order.get('message', 'No details')}\n"
-                    body_order += "----------------\n"
-                body_order += "\n"
+        # Add successful orders section
+        if success_orders:
+            body_order += "Status: Success\n"
+            body_order += "================\n"
+            for order in success_orders:
+                body_order += f"Supplier: {order.get('supplier', 'N/A')}\n"
+                body_order += f"Ingredient: {order.get('ingredient', 'N/A')}\n"
+                body_order += f"Amount: {order.get('requested_amount', 'N/A')} {order.get('requested_unit', '')}\n"
+                body_order += f"Trace ID: {order.get('trace_id', 'N/A')}\n"
+                body_order += f"Message: {order.get('message', 'No details')}\n"
+                body_order += "----------------\n"
+            body_order += "\n"
 
-            # Add failed orders section
-            if failed_orders:
-                body_order += "Status: Failure\n"
-                body_order += "================\n"
-                for order in failed_orders:
-                    body_order += f"Supplier: {order.get('supplier', 'N/A')}\n"
-                    body_order += f"Ingredient: {order.get('ingredient', 'N/A')}\n"
-                    body_order += f"Amount: {order.get('requested_amount', 'N/A')} {order.get('requested_unit', '')}\n"
-                    body_order += f"Trace ID: {order.get('trace_id', 'N/A')}\n"
-                    body_order += f"Error: {order.get('message', 'No details')}\n"
-                    body_order += "----------------\n"
-                body_order += "\n"
+        # Add failed orders section
+        if failed_orders:
+            body_order += "Status: Failure\n"
+            body_order += "================\n"
+            for order in failed_orders:
+                body_order += f"Supplier: {order.get('supplier', 'N/A')}\n"
+                body_order += f"Ingredient: {order.get('ingredient', 'N/A')}\n"
+                body_order += f"Amount: {order.get('requested_amount', 'N/A')} {order.get('requested_unit', '')}\n"
+                body_order += f"Trace ID: {order.get('trace_id', 'N/A')}\n"
+                body_order += f"Error: {order.get('message', 'No details')}\n"
+                body_order += "----------------\n"
+            body_order += "\n"
+
 
             # Add summary
             body_order += f"Summary - Success: {len(success_orders)}, Failed: {len(failed_orders)}"
 
-            # Send the email
-            send_email_order(subject_order, body_order)
-            order_batch.clear()  # Clear the batch after sending
+        # Send the email
+        send_email_order(body_order)
+        order_batch.clear()  # Clear the batch after sending
 
         # Acknowledge the message
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -166,5 +169,32 @@ def listen_to_queue():
     print("Waiting for messages. To exit press CTRL+C")
     channel.start_consuming()
 
+def start_amqp_consumer():
+    purged = False  # Track if purge happened
+    # print(purged)
+    while True:  # Retry loop for connection
+        try:
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host="host.docker.internal"))
+            channel = connection.channel()
+            
+            if not purged:
+                channel.queue_purge(queue=QUEUE_NAME)
+                purged = True  # Mark as done
+                print(f" [*] Purged all messages from {QUEUE_NAME}")
+                # print(purged)
+            # Start consuming new messages
+            channel.basic_consume(queue=QUEUE_NAME, on_message_callback=process_notification_order)
+            print(" [*] Waiting for new messages. To exit press CTRL+C")
+            channel.start_consuming()
+            
+        except pika.exceptions.AMQPConnectionError:
+            print(" [X] Failed to connect to RabbitMQ. Retrying in 5 seconds...")
+            time.sleep(5)
+        except KeyboardInterrupt:
+            break
+
 if __name__ == "__main__":
     listen_to_queue()
+    # Start RabbitMQ consumer in a separate thread
+    threading.Thread(target=start_amqp_consumer, daemon=True).start()
+    app.run(host='0.0.0.0', port=5020)
