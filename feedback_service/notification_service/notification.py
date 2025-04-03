@@ -1,9 +1,13 @@
+from flask import Flask, request, jsonify
 import pika
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import json
+import threading
+import time  # Add this with other imports
 
+QUEUE_NAME = "notification_queue"
 
 # Mailgun SMTP Settings
 SMTP_SERVER = 'in-v3.mailjet.com'
@@ -13,9 +17,13 @@ SMTP_PASSWORD = '6c0fda3a2887782d20fde64e1c07b043'  # Replace with your Mailjet 
 SENDER_EMAIL = 'yuyaoxuan888@gmail.com'  # Use your verified Mailjet sender email
 RECIPIENT_EMAIL = 'yaoxuan.yu.2023@scis.smu.edu.sg'
 
+app = Flask(__name__)
 
 # To accumulate alerts
 alert_batch = []
+
+# To accumulate notification of supplier orders
+order_batch = []
 
 def send_email(alerts):
     try:
@@ -42,6 +50,27 @@ def send_email(alerts):
     except Exception as e:
         print(f"Error sending email: {e}")
 
+def send_email_order(body_order):
+    try:
+        # Setup MIME
+        msg_order = MIMEMultipart()
+        msg_order['From'] = SENDER_EMAIL
+        msg_order['To'] = RECIPIENT_EMAIL
+        msg_order['Subject'] = "MEALSGO - Weekly Ingredient Orders Status"
+
+        # Attach the formatted email body
+        msg_order.attach(MIMEText(body_order, 'plain'))
+
+        # Connect to the SMTP server and send the email
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()  # Secure the connection with TLS
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.sendmail(SENDER_EMAIL, RECIPIENT_EMAIL, msg_order.as_string())
+
+        print(f"Order status email sent to {RECIPIENT_EMAIL}")
+    except Exception as e:
+        print(f"Error sending order email: {e}")
+        
 # AMQP Consumer to get messages from the queue
 def callback(ch, method, properties, body):
     try:
@@ -60,6 +89,68 @@ def callback(ch, method, properties, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:
         print(f"Error processing message: {e}")
+
+def process_notification_order(ch, method, properties, body_order):
+    try:
+        notification_data = json.loads(body_order)
+        print(f" [Order Notification] Received: {notification_data}")
+        
+        # Add the order to the batch
+        order_batch.append(notification_data)
+
+        # If we have at least one order in the batch, process them
+        if len(order_batch) >= 1:
+            # Separate successful and failed orders
+            success_orders = []
+            failed_orders = []
+            
+            for order in order_batch:
+                if order.get("status") == "error":
+                    failed_orders.append(order)
+                else:
+                    success_orders.append(order)
+
+            # Build email content
+            body_order = ""
+
+            # Add successful orders section
+            if success_orders:
+                body_order += "Status: Success\n"
+                body_order += "================\n"
+                for order in success_orders:
+                    body_order += f"Supplier: {order.get('supplier', 'N/A')}\n"
+                    body_order += f"Ingredient: {order.get('ingredient', 'N/A')}\n"
+                    body_order += f"Amount: {order.get('requested_amount', 'N/A')} {order.get('requested_unit', '')}\n"
+                    body_order += f"Trace ID: {order.get('trace_id', 'N/A')}\n"
+                    body_order += f"Message: {order.get('message', 'No details')}\n"
+                    body_order += "----------------\n"
+                body_order += "\n"
+
+            # Add failed orders section
+            if failed_orders:
+                body_order += "Status: Failure\n"
+                body_order += "================\n"
+                for order in failed_orders:
+                    body_order += f"Supplier: {order.get('supplier', 'N/A')}\n"
+                    body_order += f"Ingredient: {order.get('ingredient', 'N/A')}\n"
+                    body_order += f"Amount: {order.get('requested_amount', 'N/A')} {order.get('requested_unit', '')}\n"
+                    body_order += f"Trace ID: {order.get('trace_id', 'N/A')}\n"
+                    body_order += f"Error: {order.get('message', 'No details')}\n"
+                    body_order += "----------------\n"
+                body_order += "\n"
+
+            # Add summary
+            body_order += f"Summary - Success: {len(success_orders)}, Failed: {len(failed_orders)}"
+
+            # Send the email
+            send_email_order(subject_order, body_order)
+            order_batch.clear()  # Clear the batch after sending
+
+        # Acknowledge the message
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+        
+    except Exception as e:
+        print(f"Error processing order notification: {str(e)}")
 
 # Setup RabbitMQ connection
 def listen_to_queue():
