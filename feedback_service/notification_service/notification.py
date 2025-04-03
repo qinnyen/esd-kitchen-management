@@ -120,11 +120,10 @@ def process_notification_order(ch, method, properties, body_order):
             body_order += "Status: Success\n"
             body_order += "================\n"
             for order in success_orders:
+                body_order += f"Message: {order.get('message', 'No details')}\n"
                 body_order += f"Supplier: {order.get('supplier', 'N/A')}\n"
                 body_order += f"Ingredient: {order.get('ingredient', 'N/A')}\n"
-                body_order += f"Amount: {order.get('requested_amount', 'N/A')} {order.get('requested_unit', '')}\n"
                 body_order += f"Trace ID: {order.get('trace_id', 'N/A')}\n"
-                body_order += f"Message: {order.get('message', 'No details')}\n"
                 body_order += "----------------\n"
             body_order += "\n"
 
@@ -133,11 +132,10 @@ def process_notification_order(ch, method, properties, body_order):
             body_order += "Status: Failure\n"
             body_order += "================\n"
             for order in failed_orders:
+                body_order += f"Error: {order.get('message', 'No details')}\n"
                 body_order += f"Supplier: {order.get('supplier', 'N/A')}\n"
                 body_order += f"Ingredient: {order.get('ingredient', 'N/A')}\n"
-                body_order += f"Amount: {order.get('requested_amount', 'N/A')} {order.get('requested_unit', '')}\n"
                 body_order += f"Trace ID: {order.get('trace_id', 'N/A')}\n"
-                body_order += f"Error: {order.get('message', 'No details')}\n"
                 body_order += "----------------\n"
             body_order += "\n"
 
