@@ -93,7 +93,7 @@ def process_order_request(ch, method, properties, body):
         available_suppliers = availability_response["available_suppliers"]
         
         if not available_suppliers:
-            raise Exception(f"No suppliers available for {order_data['ingredient_name']}")
+            raise Exception(f"No suppliers available for {order_data['amount_needed']}{order_data['unit_of_measure']} of {order_data['ingredient_name']}")
         
         # Try suppliers until one succeeds
         for supplier in available_suppliers:
