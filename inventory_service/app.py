@@ -97,7 +97,7 @@ def schedule_low_stock_check(interval_seconds=100000000000000000000):  # Default
     print(f" [Scheduler] Low-stock check scheduled every {interval_seconds} second(s).")
 
 # Start the scheduler when the app runs
-# schedule_low_stock_check(interval_seconds=5)  # Set to 5 seconds for testing
+schedule_low_stock_check(interval_seconds=5)  # Set to 5 seconds for testing
 
 @app.route("/inventory/restock/", methods=["POST"])
 def send_restock_request_http(): 
