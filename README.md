@@ -21,6 +21,9 @@ This project, `esd-kitchen-management`, is designed to streamline and manage kit
 
 - **Order Tracking**: After orders creation, users are able to view the status of their orders.  
 
+
+<!-- GETTING STARTED -->
+
 ## Installation
 
 To install the project, follow these steps:
@@ -65,26 +68,55 @@ docker compose up -d
 
 
 ## Technical Diagrams
+## Built With
 
+### Frontend
 
-## Tech Stacks
-- Flask
-- Python
-- Outsystems
 - HTML
-- JS 
 - CSS
-
-### BTL
-- Docker
-- RabbitMQ 
-- Stripe
+- JS
 
 
-## Contributing
+### Backend
 
-Contributions are welcome! Please fork the repository and create a pull request with your changes.
+- [Python](https://python.org/)
+- [Outsystems](https://success.outsystems.com/documentation/)
 
-## License
+### Message Brokers
 
-This project is licensed under the MIT License
+- [RabbitMQ](https://rabbitmq.com)
+
+### DevOps
+
+- [Docker](https://docker.com)
+
+### External APIs used
+
+
+- [Twilio API](https://www.twilio.com/docs/sms/api/message-resource)
+- [Stripe API](https://stripe.com/docs/api/payment_intents)
+
+<p align="right">(<a href="#top">back to top</a>)</p>
+
+## Scenario 1
+## Scenario 2
+## Scenario 3
+
+<!-- Beyond the Labs -->
+
+## Beyond the Labs
+
+* External API
+  - Stripe Payment API
+  - Twilio Messaging API
+
+<p align="right">(<a href="#top">back to top</a>)</p>
+
+<!-- ACKNOWLEDGMENTS -->
+
+## Acknowledgments
+
+* [Liew Zhen Jie](https://github.com/Chicoo000)
+
+
+<p align="right">(<a href="#top">back to top</a>)</p>
