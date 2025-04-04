@@ -85,7 +85,7 @@ def check_and_notify_low_stock():
             print(f" [Inventory Service] Error checking low stock: {e}")
 
 # Schedule the job (adjust interval for testing/production)
-def schedule_low_stock_check(interval_seconds=100000000000000000000):  # Default: 5 seconds for testing
+def schedule_low_stock_check(interval_seconds=500000000000000000000):  # Default: 5 seconds for testing
     """Schedule the low-stock check job with a configurable interval."""
     trigger = IntervalTrigger(seconds=interval_seconds)  # Change to `weeks=1` for production
     scheduler.add_job(
@@ -271,8 +271,8 @@ def handle_rfid_event(ch, method, properties, body):
                     db.session.commit()
                     print(f"[Inventory] Updated stock for IngredientID {ingredient_id}: -{quantity_used}")
 
-                    # Trigger restocking if needed
-                    if ingredient.QuantityAvailable <= ingredient.ReorderThreshold:
+                    # Trigger restocking when stock hits 0
+                    if ingredient.QuantityAvailable == 0:
                         send_restock_request(
                             ingredient_name=ingredient.IngredientName,
                             amount_needed=ingredient.ReorderThreshold - ingredient.QuantityAvailable,
