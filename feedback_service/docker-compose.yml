@@ -64,12 +64,12 @@ services:
       context: .  # Change the context to the root of the project
       dockerfile: notification_service/Dockerfile
     environment:
-      - SMTP_SERVER=${SMTP_SERVER}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_USERNAME=${SMTP_USERNAME}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
-      - SENDER_EMAIL=${SENDER_EMAIL}
-      - RECIPIENT_EMAIL=${RECIPIENT_EMAIL}
+      - SMTP_SERVER=in-v3.mailjet.com
+      - SMTP_PORT=587
+      - SMTP_USERNAME=3db3fcf147025c7ab9a24e9e8f75dd62
+      - SMTP_PASSWORD=6c0fda3a2887782d20fde64e1c07b043
+      - SENDER_EMAIL=yuyaoxuan888@gmail.com
+      - RECIPIENT_EMAIL=yaoxuan.yu.2023@scis.smu.edu.sg
     ports:
       - "5006:5006"
     depends_on:
