@@ -116,7 +116,7 @@ def get_all_menu_items():
                     if str(ingredient.IngredientID) not in inventory_data:
                         error_type = 101  # Ingredient Not Found
                         issue = f"Ingredient: {ingredient_name} (ID: {ingredient.IngredientID}) not found in inventory data."
-                    elif available_quantity < 0:
+                    elif available_quantity <= 0:
                         error_type = 102  # Ingredient Out of Stock
                         issue = f"Ingredient: {ingredient_name} (ID: {ingredient.IngredientID}) is out of stock."
                     elif inventory_data.get(str(ingredient.IngredientID), {}).get("expiry_date", False) and \
