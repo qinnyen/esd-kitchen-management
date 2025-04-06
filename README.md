@@ -106,6 +106,8 @@ docker compose up -d
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Scenario 3
+![alt text](scenario3.png)
+
 <p align="right">(<a href="#top">back to top</a>)</p>
 <!-- Beyond the Labs -->
 
@@ -113,7 +115,6 @@ docker compose up -d
 
 * External API
   - Stripe Payment API
-  - Twilio Messaging API
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
