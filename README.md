@@ -2,16 +2,16 @@
 
 ## Introduction
 
+
 This project, `esd-kitchen-management`, is designed to streamline and manage kitchen operations efficiently. It includes features such as inventory management, order tracking, order creation etc <--- ==need to update==. 
 
 ## Features
 
 - **Inventory Management**: Keep track of all ingredients and supplies.
-
 - **View Menu**: Menu items will be shown based on availability of the ingredients needed to prepare the items. 
 
 - **Error Resolution**: When the menu service determined that there is not enough ingredients to prepare the menu item, it will call the Error Resolution Service which will invoke the inventory service to restock the ingredients.
-
+<!--  -->
 - **Order Creation**: Users checkout the food items which will create an order job for the kitchen to prepare. 
 
 - **Kitchen Station Management**: 
