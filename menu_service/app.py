@@ -5,7 +5,12 @@ import os
 # sys.path.append('..')
 from config import DATABASE_CONFIG
 from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
+
 app = Flask(__name__)
+#Added this
+CORS(app) 
+
 import requests
 # Configure Menu Service database
 # DATABASE_CONFIG = {

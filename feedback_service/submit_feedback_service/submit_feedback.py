@@ -5,10 +5,17 @@ import requests
 app = Flask(__name__)
 CORS(app)
 
+# Service URLs
+FEEDBACK_SERVICE_URL = "http://host.docker.internal:5003/feedback"
 
-# Service URLs (replace localhost with container names in Docker later)
-ORDER_SERVICE_URL = "http://order_service:5001/order"  # Change localhost to order_service
-FEEDBACK_SERVICE_URL = "http://feedback_service:5003/feedback"  # Change localhost to feedback_service
+# Future-ready: Outsystems API endpoint
+OUTSYSTEMS_URL_BASE = "https://personal-qtpra8g.outsystemscloud.com/Order/rest/v1"
+
+# Future-ready: prepare headers (if no token for now, keep it like this)
+HEADERS = {
+    'Content-Type': 'application/json',
+    'User-ID': '10'
+}
 
 @app.route("/submit_feedback", methods=["POST"])
 def submit_feedback():
@@ -29,20 +36,7 @@ def submit_feedback():
                 "error": "Rating must be between 1 and 5"
             }), 400
 
-        # Step 2: Validate order with Order Service
-        try:
-            order_response = requests.get(f"{ORDER_SERVICE_URL}/{data['order_id']}")
-            if order_response.status_code != 200:
-                return jsonify({
-                    "error": "Invalid order ID or order not found"
-                }), 404
-        except Exception as e:
-            return jsonify({
-                "error": "Order Service unreachable",
-                "details": str(e)
-            }), 502
-
-        # Step 3: Submit feedback to Feedback Service
+        # Step 2: Submit feedback to Feedback Service
         try:
             feedback_payload = {
                 "menu_item_id": data["menu_item_id"],
@@ -52,18 +46,15 @@ def submit_feedback():
                 "description": data.get("description", "")
             }
 
-            # Make the POST request to the Feedback Service
             fb_response = requests.post(FEEDBACK_SERVICE_URL, json=feedback_payload, timeout=5)
-            fb_response.raise_for_status()  # Raise an error for non-2xx responses
-        
+            fb_response.raise_for_status()
+
         except requests.exceptions.RequestException as e:
             return jsonify({
                 "error": "Feedback Service unreachable",
                 "details": str(e)
             }), 502
 
-        # All good
-        # return jsonify({"message": "Feedback submitted successfully"}), 201
         return jsonify({
             "message": "Feedback submitted successfully",
             "order_id": data.get("order_id"),
@@ -72,13 +63,39 @@ def submit_feedback():
             "tags": data.get("tags"),
             "description": data.get("description")
         }), 201
+
     except Exception as e:
         return jsonify({
             "error": "Unexpected error in Submit Feedback Service",
             "details": str(e)
         }), 500
 
-# Health check
+@app.route("/get_order_details", methods=["GET"])
+def get_order_details():
+    customer_id = request.args.get('customerID')
+    if not customer_id:
+        return jsonify({"error": "Missing customerID"}), 400
+
+    outsystems_url = f"{OUTSYSTEMS_URL_BASE}/OrdersByCustomerID/{customer_id}"
+    print(f"Calling Outsystems API: {outsystems_url}")
+
+    try:
+        # We include headers here
+        response = requests.get(outsystems_url, headers=HEADERS, timeout=10)
+        print(f"Outsystems API response status: {response.status_code}")
+        print(f"Outsystems API response body: {response.text}")
+
+        response.raise_for_status()  # Will raise HTTPError for bad responses
+        return jsonify(response.json()), response.status_code
+
+    except requests.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+        return jsonify({"error": str(http_err), "details": response.text}), response.status_code
+
+    except requests.RequestException as req_err:
+        print(f"Request exception: {req_err}")
+        return jsonify({"error": "Request to Outsystems API failed", "details": str(req_err)}), 500
+
 @app.route("/health", methods=["GET"])
 def health_check():
     return jsonify({"status": "Submit Feedback Service is running"})

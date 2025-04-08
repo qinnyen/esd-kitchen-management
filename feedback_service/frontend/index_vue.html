@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Feedback Submission</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <!-- Axios -->
+    <script src='https://unpkg.com/axios/dist/axios.min.js'></script>
+</head>
+
+<body>
+    <div id="app" class="container mt-4">
+        <h1>Feedback Submission</h1>
+
+        <!-- Show success message if all feedback is done -->
+        <div v-if="feedbackSubmitted" class="alert alert-success mt-4">
+            Thank you! You have submitted feedback for all items.
+        </div>
+
+        <!-- Show error message if any -->
+        <div v-if="feedbackError" class="alert alert-danger mt-4">
+            {{ feedbackError }}
+        </div>
+
+        <!-- Feedback form -->
+        <div v-if="!feedbackSubmitted && menuItemName" class="mt-4">
+            <h3>Menu Item {{ currentMenuItemIndex + 1 }} of {{ menu_item_ids.length }}</h3>
+            <p><strong>{{ menuItemName }}</strong></p>
+            <p>{{ menuItemDescription }}</p>
+
+            <form @submit.prevent="submitFeedback">
+                <!-- Rating -->
+                <div class="form-group">
+                    <label for="rating">Rating</label>
+                    <select v-model="rating" class="form-control" id="rating" required>
+                        <option value="">Select Rating</option>
+                        <option value="1">1 - Poor</option>
+                        <option value="2">2 - Fair</option>
+                        <option value="3">3 - Good</option>
+                        <option value="4">4 - Very Good</option>
+                        <option value="5">5 - Excellent</option>
+                    </select>
+                </div>
+
+                <!-- Tags -->
+                <div class="form-group mt-2">
+                    <label for="tags">Tags (comma separated)</label>
+                    <input v-model="tags" type="text" class="form-control" id="tags"
+                        placeholder="e.g., spicy, vegan">
+                </div>
+
+                <!-- Description -->
+                <div class="form-group mt-2">
+                    <label for="description">Description</label>
+                    <textarea v-model="description" class="form-control" id="description" rows="3"
+                        placeholder="Write your feedback here"></textarea>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn btn-primary mt-3">Submit Feedback</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const submit_feedback_URL = "http://localhost:5005/submit_feedback";
+        const order_service_URL = "http://localhost:5005/get_order_details";
+        const menu_service_URL = "http://localhost:5002/menu/item";
+
+        const app = Vue.createApp({
+            data() {
+                return {
+                    customerID: "",
+                    order_id: "",
+                    menu_item_ids: [], // Store list of menu item IDs
+                    currentMenuItemIndex: 0, // Track current index
+                    menu_item_id: "",
+                    rating: "",
+                    tags: "",
+                    description: "",
+                    feedbackSubmitted: false,
+                    feedbackError: "",
+                    menuItemName: "",
+                    menuItemDescription: "",
+                };
+            },
+            mounted() {
+                console.log("Page mounted");
+                const urlParams = new URLSearchParams(window.location.search);
+                this.customerID = urlParams.get('customerID');
+                console.log("Extracted customerID:", this.customerID);
+
+                if (this.customerID) {
+                    this.fetchOrderDetails();
+                } else {
+                    console.error("No customerID in URL");
+                    this.feedbackError = "Customer ID is missing in URL.";
+                }
+            },
+            methods: {
+                // Fetch order details from backend service
+                fetchOrderDetails() {
+                    axios.get(`${order_service_URL}?customerID=${this.customerID}`)
+                        .then(response => {
+                            console.log("Order service response:", response.data);
+                            this.order_id = response.data.OrderID;
+                            this.menu_item_ids = response.data.MenuItemIDs.split(",");
+                            this.currentMenuItemIndex = 0;
+                            this.loadCurrentMenuItem();
+                        })
+                        .catch(error => {
+                            console.error("Order service error", error);
+                            this.feedbackError = "Error fetching order details.";
+                        });
+                },
+
+                // Load the current menu item details
+                loadCurrentMenuItem() {
+                    if (this.currentMenuItemIndex < this.menu_item_ids.length) {
+                        this.menu_item_id = this.menu_item_ids[this.currentMenuItemIndex];
+                        console.log(`Loading menu item ${this.menu_item_id} (${this.currentMenuItemIndex + 1} of ${this.menu_item_ids.length})`);
+                        this.fetchMenuDetails(this.menu_item_id);
+                    } else {
+                        console.log("All feedback submitted");
+                        this.feedbackSubmitted = true;
+                    }
+                },
+
+                // Fetch menu item details from backend service
+                fetchMenuDetails(menuItemID) {
+                    axios.get(`${menu_service_URL}/${menuItemID}`)
+                        .then(response => {
+                            console.log("Menu service response:", response.data);
+                            this.menuItemName = response.data.name;
+                            this.menuItemDescription = response.data.description;
+                        })
+                        .catch(error => {
+                            console.error("Menu service error", error);
+                            this.feedbackError = "Error fetching menu details.";
+                        });
+                },
+
+                // Submit feedback for current menu item
+                submitFeedback() {
+                    const feedbackData = {
+                        order_id: this.order_id,
+                        menu_item_id: this.menu_item_id,
+                        rating: this.rating,
+                        tags: this.tags ? this.tags.split(',').map(tag => tag.trim()) : [],
+                        description: this.description
+                    };
+
+                    console.log("Submitting feedback:", feedbackData);
+
+                    axios.post(submit_feedback_URL, feedbackData)
+                        .then(response => {
+                            console.log("Feedback response:", response.data);
+                            if (response.status === 201) {
+                                // Reset form
+                                this.rating = "";
+                                this.tags = "";
+                                this.description = "";
+
+                                // Move to next menu item
+                                this.currentMenuItemIndex++;
+                                this.loadCurrentMenuItem();
+                            } else {
+                                this.feedbackError = response.data.message || "Unexpected error.";
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Feedback submission error", error);
+                            this.feedbackError = "Error submitting feedback.";
+                        });
+                }
+            }
+        });
+
+        app.mount('#app');
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+
+</body>
+
+</html>
