@@ -4,21 +4,22 @@ import time
 app = Flask(__name__)
 
 INVENTORY = {
-    "Tomato": False
+    "Cheese": True
 }
 
 @app.route('/check_availability', methods=['GET'])
 def check_availability():
+    time.sleep(0.5)
     ingredient = request.args.get('ingredient_name')
     if ingredient not in INVENTORY:
         return jsonify({
             "available": False,
-            "supplier": "Tomato Express",
+            "supplier": "Cheese Haven",
             "reason": "Unsupported ingredient"
         })
     return jsonify({
         "available": INVENTORY[ingredient],
-        "supplier": "Tomato Express",
+        "supplier": "Cheese Haven",
         "reason": "In stock" if INVENTORY[ingredient] else "Out of stock"
     })
 
@@ -30,20 +31,20 @@ def place_order():
     if ingredient not in INVENTORY:
         return jsonify({
             "status": "error",
-            "supplier": "Tomato Express",
+            "supplier": "Cheese Haven",
             "message": "Unsupported ingredient"
         }), 400
     
     if not INVENTORY[ingredient]:
         return jsonify({
             "status": "error",
-            "supplier": "Tomato Express",
+            "supplier": "Cheese Haven",
             "message": f"Temporarily out of {ingredient}"
         }), 400
     
     return jsonify({
         "status": "success",
-        "supplier": "Tomato Express",
+        "supplier": "Cheese Haven",
         "ingredient": ingredient,
         "amount": data["amount"],
         "unit": data["unit"],
@@ -51,4 +52,4 @@ def place_order():
     })
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5018, debug=False)
+    app.run(host="0.0.0.0", port=5014, debug=False)

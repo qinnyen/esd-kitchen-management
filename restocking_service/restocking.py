@@ -35,7 +35,7 @@ class SupplierIngredient(db.Model):
     SupplierID = db.Column(db.Integer, db.ForeignKey("Suppliers.SupplierID"), primary_key=True)
 
 # AMQP Setup
-RABBITMQ_HOST = environ.get("RABBITMQ_HOST") or "localhost"
+RABBITMQ_HOST = "host.docker.internal"
 QUEUE_FROM_INVENTORY = "restocking_queue"
 QUEUE_TO_MANAGE_INVENTORY = "manage_inventory_queue"
 
@@ -90,4 +90,4 @@ def start_amqp_consumer():
 
 if __name__ == "__main__":
     threading.Thread(target=start_amqp_consumer, daemon=True).start()
-    app.run(host="0.0.0.0", port=5005, debug=False)
+    app.run(host="0.0.0.0", port=5007, debug=False)

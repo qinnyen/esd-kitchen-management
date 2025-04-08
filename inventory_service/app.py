@@ -35,7 +35,7 @@ class Inventory(db.Model):
     ReorderThreshold = db.Column(db.Integer, nullable=False)
 
 # AMQP configuration for Restocking Service
-RABBITMQ_HOST = "localhost"
+RABBITMQ_HOST = "host.docker.internal"
 QUEUE_TO_RESTOCKING = "restocking_queue"
 
 def send_restock_request(ingredient_name, amount_needed, unit_of_measure):
@@ -85,7 +85,7 @@ def check_and_notify_low_stock():
             print(f" [Inventory Service] Error checking low stock: {e}")
 
 # Schedule the job (adjust interval for testing/production)
-def schedule_low_stock_check(interval_seconds=500000000000000000000):  # Default: 5 seconds for testing
+def schedule_low_stock_check(interval_seconds=15):  # Default: 15 seconds for testing
     """Schedule the low-stock check job with a configurable interval."""
     trigger = IntervalTrigger(seconds=interval_seconds)  # Change to `weeks=1` for production
     scheduler.add_job(
@@ -97,7 +97,7 @@ def schedule_low_stock_check(interval_seconds=500000000000000000000):  # Default
     print(f" [Scheduler] Low-stock check scheduled every {interval_seconds} second(s).")
 
 # Start the scheduler when the app runs
-schedule_low_stock_check(interval_seconds=5)  # Set to 5 seconds for testing
+schedule_low_stock_check(interval_seconds=15)  # Set to 5 seconds for testing
 
 @app.route("/inventory/restock/", methods=["POST"])
 def send_restock_request_http(): 

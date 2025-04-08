@@ -5,14 +5,14 @@ from pathlib import Path
 
 # List of all services to run with their ports
 SERVICES = [
-    {"name": "Restocking Service", "file": "restocking.py", "port": 5005},
-    {"name": "Manage Inventory", "file": "manage_inventory.py", "port": 5006},
-    {"name": "Fresh Farms", "file": "supplier_freshfarms.py", "port": 5010},
-    {"name": "Organic Goods", "file": "supplier_organicgoods.py", "port": 5011},
-    {"name": "Dairy Delight", "file": "supplier_dairydelight.py", "port": 5012},
-    {"name": "Cheese Haven", "file": "supplier_cheesehaven.py", "port": 5016},
-    {"name": "Lettuce Land", "file": "supplier_lettuceland.py", "port": 5017},
-    {"name": "Tomato Express", "file": "supplier_tomatoexpress.py", "port": 5018},
+    {"name": "Restocking Service", "file": "restocking_service/restocking.py", "port": 5005},
+    {"name": "Manage Inventory Service", "file": "manage_inventory_service/manage_inventory.py", "port": 5006},
+    {"name": "Fresh Farms Service", "file": "supplier_freshfarms_service/supplier_freshfarms.py", "port": 5010},
+    {"name": "Organic Goods Service", "file": "supplier_organicgoods_service/supplier_organicgoods.py", "port": 5011},
+    {"name": "Dairy Delight Service", "file": "supplier_dairydelight_service/supplier_dairydelight.py", "port": 5012},
+    {"name": "Cheese Haven Service", "file": "supplier_cheesehaven_service/supplier_cheesehaven.py", "port": 5016},
+    {"name": "Lettuce Land Service", "file": "supplier_lettuceland_service/supplier_lettuceland.py", "port": 5017},
+    {"name": "Tomato Express Service", "file": "supplier_tomatoexpress_service/supplier_tomatoexpress.py", "port": 5018},
 ]
 
 def run_service(service):

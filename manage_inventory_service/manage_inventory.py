@@ -8,24 +8,33 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
 
-RABBITMQ_HOST = "localhost"
+RABBITMQ_HOST = "host.docker.internal"
 QUEUE_FROM_RESTOCKING = "manage_inventory_queue"
 QUEUE_TO_NOTIFICATION = "notification_queue"
 
-# Supplier URLs (moved from api_gateway.py)
+# SUPPLIER_URLS = {
+#     "Cheese Haven": "http://localhost:5014",
+#     "Dairy Delight": "http://localhost:5015",
+#     "Fresh Farms": "http://localhost:5016",
+#     "Lettuce Land": "http://localhost:5017",
+#     "Organic Goods": "http://localhost:5018",
+#     "Tomato Express": "http://localhost:5019"
+# }
+
+#Containerized URLS
 SUPPLIER_URLS = {
-    "Cheese Haven": "http://localhost:5016",
-    "Organic Goods": "http://localhost:5011",
-    "Dairy Delight": "http://localhost:5012",
-    "Lettuce Land": "http://localhost:5017",
-    "Fresh Farms": "http://localhost:5010",
-    "Tomato Express": "http://localhost:5018"
+    "Cheese Haven": "http://host.docker.internal:5014",
+    "Dairy Delight": "http://host.docker.internal:5015",
+    "Fresh Farms": "http://host.docker.internal:5016",
+    "Lettuce Land": "http://host.docker.internal:5017",
+    "Organic Goods": "http://host.docker.internal:5018",
+    "Tomato Express": "http://host.docker.internal:5019"
 }
 
 def send_to_queue(queue_name, message):
     connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
     channel = connection.channel()
-    channel.queue_declare(queue=queue_name)
+    channel.queue_declare(queue=queue_name, durable=True)
     channel.basic_publish(exchange="", routing_key=queue_name, body=json.dumps(message))
     connection.close()
     print(f" [Order Supply] Sent to {queue_name}: {message}")
@@ -130,7 +139,7 @@ def process_order_request(ch, method, properties, body):
 def start_amqp_consumer():
     connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
     channel = connection.channel()
-    channel.queue_declare(queue=QUEUE_FROM_RESTOCKING)
+    channel.queue_declare(queue=QUEUE_FROM_RESTOCKING, durable=True)
     channel.basic_consume(queue=QUEUE_FROM_RESTOCKING, on_message_callback=process_order_request)
     print(" [*] Waiting for restocking requests. To exit press CTRL+C")
     channel.start_consuming()

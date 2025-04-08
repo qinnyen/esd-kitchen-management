@@ -175,6 +175,8 @@ def start_amqp_consumer():
             connection = pika.BlockingConnection(pika.ConnectionParameters(host="host.docker.internal"))
             channel = connection.channel()
             
+            channel.queue_declare(queue=QUEUE_NAME, durable=True)
+
             if not purged:
                 channel.queue_purge(queue=QUEUE_NAME)
                 purged = True  # Mark as done
@@ -190,6 +192,7 @@ def start_amqp_consumer():
             time.sleep(5)
         except KeyboardInterrupt:
             break
+
 
 if __name__ == "__main__":
     # listen_to_queue()
