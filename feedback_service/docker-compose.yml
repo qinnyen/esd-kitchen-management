@@ -1,5 +1,3 @@
-
-
 # Custom network
 networks:
   esd-net:  
@@ -7,17 +5,17 @@ networks:
 
 services:
 
-  order_service:
-    build:
-      context: .  # Change the context to the root of the project
-      dockerfile: order_service/Dockerfile
-    environment:
-      dbURL: mysql+mysqlconnector://root@host.docker.internal:3306/is213_order
-      PYTHONUNBUFFERED: 1
-    ports:
-      - "5001:5001"
-    networks:
-      - esd-net
+  # order_service:
+  #   build:
+  #     context: .  # Change the context to the root of the project
+  #     dockerfile: order_service/Dockerfile
+  #   environment:
+  #     dbURL: mysql+mysqlconnector://root@host.docker.internal:3306/is213_order
+  #     PYTHONUNBUFFERED: 1
+  #   ports:
+  #     - "5001:5001"
+  #   networks:
+  #     - esd-net
 
 
   feedback_service:
@@ -39,7 +37,6 @@ services:
     ports:
       - "5005:5005"
     depends_on:
-      - order_service
       - feedback_service
       
     networks:
