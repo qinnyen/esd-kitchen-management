@@ -1,5 +1,8 @@
-CREATE DATABASE is213_inventory;
-use is213_inventory;
+CREATE DATABASE IF NOT EXISTS is213_inventory;
+USE is213_inventory;
+
+DROP TABLE IF EXISTS Inventory;
+
 CREATE TABLE Inventory (
     IngredientID INT PRIMARY KEY AUTO_INCREMENT,
     IngredientName VARCHAR(100) NOT NULL,
