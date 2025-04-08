@@ -8,6 +8,15 @@ from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
 import requests
 # Configure Menu Service database
+# DATABASE_CONFIG = {
+#     'menu_db': {
+#         'host': 'localhost',
+#         'port': 3306,
+#         'user': 'root',
+#         'password': '',
+#         'database': 'is213_menu'
+#     }
+# }
 app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DATABASE_CONFIG['menu_db']['user']}:{DATABASE_CONFIG['menu_db']['password']}@{DATABASE_CONFIG['menu_db']['host']}:{DATABASE_CONFIG['menu_db']['port']}/{DATABASE_CONFIG['menu_db']['database']}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -158,43 +167,49 @@ def get_all_menu_items():
                 "availability_status": item.AvailabilityStatus
             })
         print(f"Menu items fetched successfully: {len(result)} items found.")
+
         # Return the result list as part of the response
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/menu/item/<int:itemID>', methods=['GET'])
-def get_menu_item_details(itemID):
-    try:
-        menu_item = Menu.query.filter_by(MenuItemID=itemID).first()
-        if menu_item:
-            result = {
-                "id": menu_item.MenuItemID,
-                "name": menu_item.ItemName,
-                "description": menu_item.Description,
-                "price": menu_item.Price,
-                "availability_status": menu_item.AvailabilityStatus
-            }
-            return jsonify(result), 200
-        else:
-            return jsonify({"error": f"Menu item with ID {itemID} not found"}), 404
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
+@app.route('/menu/items/<string:itemIDs>', methods=['GET'])
+def get_menu_item_details(itemIDs):
     # try:
-    #     itemIDs = [int(id.strip()) for id in itemIDs.split(",")]
-    #     menu_items = Menu.query.filter(Menu.MenuItemID.in_(itemIDs)).all()
-    #     result = []
-    #     for item in menu_items:
-    #         result.append({
-    #             "id": item.MenuItemID,
-    #             "name": item.ItemName,
-    #             "description": item.Description,
-    #             "price": item.Price,
-    #             "availability_status": item.AvailabilityStatus
-    #         })
-    #     return jsonify(result), 200
+    #     menu_item = Menu.query.filter_by(MenuItemID=itemID).first()
+    #     if menu_item:
+    #         result = {
+    #             "id": menu_item.MenuItemID,
+    #             "name": menu_item.ItemName,
+    #             "description": menu_item.Description,
+    #             "price": menu_item.Price,
+    #             "availability_status": menu_item.AvailabilityStatus
+    #         }
+    #         return jsonify(result), 200
+    #     else:
+    #         return jsonify({"error": f"Menu item with ID {itemID} not found"}), 404
     # except Exception as e:
     #     return jsonify({"error": str(e)}), 500
+
+    try:
+        print("Fetching menu item details...")
+        print(f"Item IDs: {itemIDs}")
+        # Split the itemIDs string into a list of integers
+        itemIDs = [int(id.strip()) for id in itemIDs.split(",")]
+        print(itemIDs)
+        # Fetch menu items based on the provided IDs
+        menu_items = Menu.query.filter(Menu.MenuItemID.in_(itemIDs)).all()
+        result = []
+        for item in menu_items:
+            result.append({
+                "id": item.MenuItemID,
+                "name": item.ItemName,
+                "description": item.Description,
+                "price": item.Price,
+                "availability_status": item.AvailabilityStatus
+            })
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5002, debug=True)

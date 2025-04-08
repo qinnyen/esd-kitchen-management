@@ -13,12 +13,13 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DATABASE_CONFI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # URL for Menu Service
 # MENU_SERVICE_URL = "http://localhost:5002"
+# KITCHEN_SERVICE_URL = "http://localhost:5008"
 ORDER_SERVICE_CREATE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/CreateOrder/"
 ORDER_SERVICE_READ = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/Orders"
 ORDER_SERVICE_UPDATE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/UpdateOrder/"
 ORDER_SERVICE_DELETE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/DeleteOrder/"
 ORDER_SERVICE_URL = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/OrdersByCustomerID/"
-# KITCHEN_SERVICE_URL = "http://localhost:5008"
+ORDERITEM_SERVICE_URL = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/GetOrderItems/"
 MENU_SERVICE_URL = os.getenv("MENU_SERVICE_URL", "http://host.docker.internal:5002")
 KITCHEN_SERVICE_URL = os.getenv("KITCHEN_SERVICE_URL", "http://host.docker.internal:5008")
 
@@ -118,33 +119,85 @@ def get_order_id(orderID):
         return jsonify({"error": str(e)}), 500
 
 # Endpoint: Retrieve orders by customer ID (Composite Service)
+# @app.route('/order-fulfillment/customer/<int:customer_id>', methods=['GET'])
+# def get_order_status(customer_id):
+#     try:
+
+#         response = requests.get(f"{ORDER_SERVICE_URL}/{customer_id}")
+#         menu_ids = response.json()["MenuItemIDs"]
+#         menu_ids_list = [int(x) for x in menu_ids.split(",")]
+#         menu_items = []
+#         menuItems = requests.get(f"{MENU_SERVICE_URL}/menu/items/{menu_ids}")
+#         menu_items = menuItems.json()
+        
+#         # menu_items = []
+#         # for i in menu_ids_list:
+#         #      menuItems = requests.get(f"{MENU_SERVICE_URL}/menu/item/{i}")
+#         #      menu_items.append(menuItems.json())
+
+             
+#         order_response = response.json()
+#         order_response["MenuItems"] = menu_items
+
+#         if response.status_code == 200:
+#             return jsonify(order_response), 200
+#         else:
+#             return jsonify({"error": "Failed to retrieve orders"}), response.status_code
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
 @app.route('/order-fulfillment/customer/<int:customer_id>', methods=['GET'])
 def get_order_status(customer_id):
     try:
+        # Define headers for requests
+        headers = {
+            'Content-Type': 'application/json',
+            # Add authorization if required
+            # 'Authorization': 'Bearer <token>'
+            'User-ID': '10'    
+        }
+        print(f"Fetching orders for customer ID: {customer_id}")
+        # Fetch orders from the ORDER_SERVICE_URL
+        response = requests.get(f"{ORDER_SERVICE_URL}/{customer_id}", headers=headers)
+        if response.status_code != 200:
+            print(f"Failed to fetch orders. Status: {response.status_code}, Message: {response.text}")
+            return jsonify({"error": f"Failed to retrieve orders. Status: {response.status_code}, Message: {response.text}"}), response.status_code
+        print(f"Fetched orders successfully. Status: {response.status_code}")
+        # print(f"Response: {response.json()}")
+        # Parse response and validate MenuItemIDs
+        order_data = response.json()
+        menu_ids = order_data.get("MenuItemIDs", [])
+        # print(f"{MENU_SERVICE_URL}/menu/items/{menu_ids}")
+        if not menu_ids:
+            return jsonify({"error": "No MenuItemIDs found in the order"}), 404
 
-        response = requests.get(f"{ORDER_SERVICE_URL}/{customer_id}")
-        menu_ids = response.json()["MenuItemIDs"]
-        menu_ids_list = [int(x) for x in menu_ids.split(",")]
-        menu_items = []
-        menuItems = requests.get(f"{MENU_SERVICE_URL}/menu/items/{menu_ids}")
-        menu_items = menuItems.json()
+        # Fetch menu items from MENU_SERVICE_URL
+       
+        menu_response = requests.get(f"{MENU_SERVICE_URL}/menu/items/{menu_ids}", headers=headers)
+        if menu_response.status_code != 200:
+            return jsonify({"error": f"Failed to retrieve menu items. Status: {menu_response.status_code}, Message: {menu_response.text}"}), menu_response.status_code
+
+        # Add menu items to order response
+        menu_items = menu_response.json()
         
-        # menu_items = []
-        # for i in menu_ids_list:
-        #      menuItems = requests.get(f"{MENU_SERVICE_URL}/menu/item/{i}")
-        #      menu_items.append(menuItems.json())
-
-             
-        order_response = response.json()
-        order_response["MenuItems"] = menu_items
-
-        if response.status_code == 200:
-            return jsonify(order_response), 200
-        else:
-            return jsonify({"error": "Failed to retrieve orders"}), response.status_code
+        # print(f"Menu items added to order data: {menu_items}")
+        orderItem_response =  requests.get(f"{ORDERITEM_SERVICE_URL}/{order_data['OrderID']}")
+        # print(orderItem_response.json())
+        for menu_item in menu_items:
+            for order_item in orderItem_response.json():
+                if menu_item['id'] == order_item['MenuItemID']:
+                    menu_item['quantity'] = order_item['Quantity']
+                    menu_item['subtotal'] = order_item['Subtotal']
+        # print(f"Menu items with quantities: {menu_items}")
+        order_data["MenuItems"] = menu_items
+        return jsonify(order_data), 200
+        
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": f"Request error: {str(e)}"}), 500
+    except ValueError as e:
+        return jsonify({"error": f"Invalid JSON response: {str(e)}"}), 500
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
+        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+    
 @app.route('/order-fulfillment/update-order/<int:order_id>', methods=['PUT'])
 def update_order(order_id):
     try:

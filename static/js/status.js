@@ -24,6 +24,9 @@ document.getElementById("orderForm").addEventListener("submit", function (event)
                         <h4>Items:</h4>
                         <ul>${order.MenuItems.map(item => `
                             <li>Item: ${item.name}</li>
+                            <li>Quantity: ${item.quantity}</li>
+                            <li>Price: $${item.subtotal}</li>
+                            
                         `).join("")}</ul>
                     </div>
                 `;
