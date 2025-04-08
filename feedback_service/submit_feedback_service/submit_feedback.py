@@ -9,7 +9,8 @@ CORS(app)
 FEEDBACK_SERVICE_URL = "http://host.docker.internal:5003/feedback"
 
 # Future-ready: Outsystems API endpoint
-OUTSYSTEMS_URL_BASE = "https://personal-qtpra8g.outsystemscloud.com/Order/rest/v1"
+OUTSYSTEMS_URL_BASE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1"
+# OUTSYSTEMS_URL_BASE = "https://personal-qptpra8g.outsystemscloud.com/Order/rest/v1/OrdersByCustomerID/"
 
 # Future-ready: prepare headers (if no token for now, keep it like this)
 HEADERS = {
@@ -70,18 +71,23 @@ def submit_feedback():
             "details": str(e)
         }), 500
 
-@app.route("/get_order_details", methods=["GET"])
-def get_order_details():
-    customer_id = request.args.get('customerID')
-    if not customer_id:
+@app.route("/get_order_details/<int:customerID>", methods=["GET"])
+def get_order_details(customerID):
+    # customer_id = request.args.get('customerID')
+    if not customerID:
         return jsonify({"error": "Missing customerID"}), 400
-
-    outsystems_url = f"{OUTSYSTEMS_URL_BASE}/OrdersByCustomerID/{customer_id}"
+    headers = {
+        'Content-Type': 'application/json',
+        'User-ID': '10'
+    }
+    outsystems_url = f"{OUTSYSTEMS_URL_BASE}/OrdersByCustomerID/{customerID}"
     print(f"Calling Outsystems API: {outsystems_url}")
 
     try:
-        # We include headers here
-        response = requests.get(outsystems_url, headers=HEADERS, timeout=10)
+        # We include headers here for future-ready purposes, even if not used now
+        print(f"Headers: {headers}")
+        print(outsystems_url)
+        response = requests.get(outsystems_url, headers=headers)
         print(f"Outsystems API response status: {response.status_code}")
         print(f"Outsystems API response body: {response.text}")
 
