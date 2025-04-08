@@ -107,7 +107,8 @@ docker compose up -d
 
 ## Scenario 3
 ![alt text](scenario3.png)
-
+![alt text](scenario3_2.png)
+![alt text](scenario3_3.png)
 <p align="right">(<a href="#top">back to top</a>)</p>
 <!-- Beyond the Labs -->
 
