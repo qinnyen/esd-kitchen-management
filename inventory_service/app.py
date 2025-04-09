@@ -65,8 +65,12 @@ def send_restock_request(ingredient_name, amount_needed, unit_of_measure):
         )
         print(f" [Inventory Service] Sent to restocking_queue: {message}")
         connection.close()
+        # Return a success response
+        return jsonify({"success": True, "message": "Restock request sent successfully"}), 200
     except Exception as e:
+        # Handle connection errors or other exceptions
         print(f" [Inventory Service] Error sending restock request: {e}")
+        return jsonify({"success": False, "message": f"Error sending restock request: {str(e)}"}), 500
 
 def check_and_notify_low_stock():
     """Check for low stock items within Flask app context."""
@@ -104,39 +108,56 @@ def send_restock_request_http():
     """
     Send a restock request to the Restocking Service via AMQP.
     """
-    try:
-        # Create a connection to RabbitMQ
-        connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
-        channel = connection.channel()
-        # Prepare the message
-        data = request.get_json()
+    data = request.get_json()
+    restock_response = send_restock_request(
+        ingredient_name=data.get("ingredient_name"),
+        amount_needed=data.get("amount_needed"),
+        unit_of_measure=data.get("unit_of_measure")
+    )
+      # If the request was successful, return a success response
+    if restock_response[1] != 200:
+        return jsonify({"success": False, "message": "Failed to send restock request"}), 500
+    return restock_response
+
+
+    # # Uncomment this block if you want to use RabbitMQ directly in the HTTP endpoint
+    
+    
+    
+    
+    # try:
+    #     # Create a connection to RabbitMQ
+    #     connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
+    #     channel = connection.channel()
+    #     # Prepare the message
+    #     data = request.get_json()
  
-        ingredient_name = data.get("ingredient_name")
-        amount_needed = data.get("amount_needed")
-        unit_of_measure = data.get("unit_of_measure")
-        message = {
-        "ingredient_name": ingredient_name,
-        "amount_needed": amount_needed,
-        "unit_of_measure": unit_of_measure
-        }
+    #     ingredient_name = data.get("ingredient_name")
+    #     amount_needed = data.get("amount_needed")
+    #     unit_of_measure = data.get("unit_of_measure")
+    #     message = {
+    #     "ingredient_name": ingredient_name,
+    #     "amount_needed": amount_needed,
+    #     "unit_of_measure": unit_of_measure
+    #     }
         
 
 
-        # Declare the queue (in case it doesn't exist)
-        channel.queue_declare(queue=QUEUE_TO_RESTOCKING)
+    #     # Declare the queue (in case it doesn't exist)
+    #     channel.queue_declare(queue=QUEUE_TO_RESTOCKING)
 
-        # Publish the message to the queue
-        channel.basic_publish(
-            exchange="",
-            routing_key=QUEUE_TO_RESTOCKING,
-            body=json.dumps(message)
-        )
-        print(f" [Inventory Service] Sent to restocking_queue: {message}")
-        connection.close()
-        return jsonify({"success": True, "message": "Restock request sent successfully"}), 200
-    except Exception as e:
-        print(f" [Inventory Service] Error sending restock request: {e}")
-        return jsonify({"success": False, "message": f"Error sending restock request: {str(e)}"}), 500
+    #     # Publish the message to the queue
+    #     channel.basic_publish(
+    #         exchange="",
+    #         routing_key=QUEUE_TO_RESTOCKING,
+    #         body=json.dumps(message)
+    #     )
+    #     print(f" [Inventory Service] Sent to restocking_queue: {message}")
+    #     connection.close()
+    #     return jsonify({"success": True, "message": "Restock request sent successfully"}), 200
+    # except Exception as e:
+    #     print(f" [Inventory Service] Error sending restock request: {e}")
+    #     return jsonify({"success": False, "message": f"Error sending restock request: {str(e)}"}), 500
 
 @app.route('/inventory/<int:ingredient_id>', methods=['GET'])
 def get_ingredient(ingredient_id):
