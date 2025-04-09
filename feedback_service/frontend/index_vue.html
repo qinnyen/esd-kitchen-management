@@ -3,41 +3,58 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Feedback Submission</title>
+  <title>Feedback Submission - Batch Mode</title>
 </head>
 <body>
   <div id="app" class="container">
+
     <h1>Feedback Submission</h1>
 
+    <!-- Error Message -->
     <div v-if="feedbackError" style="color: white; background: #f44336; padding: 10px;">
       {{ feedbackError }}
     </div>
 
-    <div v-if="menuItem">
-      <p><strong>Menu Item:</strong> {{ menuItem.name }}</p>
-      <p><strong>Description:</strong> {{ menuItem.description }}</p>
-      <p><strong>Price:</strong> ${{ menuItem.price }}</p>
-      <p><strong>Availability:</strong> {{ menuItem.availability_status ? 'Available' : 'Unavailable' }}</p>
+    <!-- Success Message -->
+    <div v-if="submissionComplete && !feedbackError" style="color: white; background: green; padding: 10px;">
+      Thank you for your submission, you may now exit the page.
+    </div>
 
-      <div>
-        <label for="rating">Rating:</label>
-        <select v-model="rating">
-          <option disabled value="">Select Rating</option>
-          <option v-for="n in 5" :key="n" :value="n">{{ n }}</option>
-        </select>
+    <!-- Feedback Form -->
+    <div v-if="!submissionComplete && menuItems.length">
+      <div v-for="(item, index) in menuItems" :key="item.id" style="border: 1px solid #ddd; margin-bottom: 20px; padding: 10px;">
+        <h3>{{ index + 1 }}. {{ item.name }}</h3>
+        <p><strong>Description:</strong> {{ item.description }}</p>
+        <p><strong>Price:</strong> ${{ item.price }}</p>
+
+        <div>
+          <label>Rating:</label>
+          <select v-model="item.rating">
+            <option disabled value="">Select Rating</option>
+            <option v-for="n in 5" :key="n" :value="n">{{ n }}</option>
+          </select>
+        </div>
+
+	<br>
+
+        <div>
+          <label>Tags (comma separated):</label>
+          <input v-model="item.tags" placeholder="e.g., spicy, vegan" />
+        </div>
+
+	<br>
+
+        <div>
+          <label>Description:</label> <br>
+          <textarea v-model="item.descriptionInput" placeholder="Additional comments"></textarea>
+        </div>
       </div>
 
-      <div>
-        <label>Tags (comma separated):</label>
-        <input v-model="tags" placeholder="e.g., spicy, vegan" />
-      </div>
+      <button @click="submitAllFeedback">Submit All Feedback</button>
+    </div>
 
-      <div>
-        <label>Description:</label>
-        <textarea v-model="description"></textarea>
-      </div>
-
-      <button @click="submitFeedback">Submit Feedback</button>
+    <div v-else-if="!submissionComplete">
+      <p>Loading menu items...</p>
     </div>
 
   </div>
@@ -53,12 +70,9 @@
           customerID: "",
           orderID: "",
           menuItemIDs: [],
-          currentMenuItemIndex: 0,
-          menuItem: null,
-          rating: "",
-          tags: "",
-          description: "",
-          feedbackError: ""
+          menuItems: [],
+          feedbackError: "",
+          submissionComplete: false
         };
       },
       mounted() {
@@ -78,52 +92,63 @@
 
             this.orderID = response.data.OrderID;
             this.menuItemIDs = response.data.MenuItemIDs.split(",");
-            this.loadMenuItem();
+
+            await this.loadAllMenuItems();
           } catch (error) {
             console.error("Error fetching order details:", error);
             this.feedbackError = "Failed to load order details.";
           }
         },
 
-        async loadMenuItem() {
-          if (this.currentMenuItemIndex >= this.menuItemIDs.length) {
-            alert("All feedback submitted!");
-            return;
-          }
-
-          const itemID = this.menuItemIDs[this.currentMenuItemIndex].trim();
+        async loadAllMenuItems() {
           try {
-            const response = await axios.get(`http://localhost:5002/menu/item/${itemID}`);
-            console.log("Menu item:", response.data);
+            const itemPromises = this.menuItemIDs.map(itemID =>
+              axios.get(`http://localhost:5002/menu/item/${itemID.trim()}`)
+            );
 
-            this.menuItem = response.data;
-            this.rating = "";
-            this.tags = "";
-            this.description = "";
+            const responses = await Promise.all(itemPromises);
+
+            this.menuItems = responses.map(res => ({
+              ...res.data,
+              rating: "",
+              tags: "",
+              descriptionInput: ""
+            }));
+
+            console.log("Loaded menu items:", this.menuItems);
           } catch (error) {
-            console.error("Error fetching menu item:", error);
-            this.feedbackError = "Failed to load menu item details.";
+            console.error("Error loading menu items:", error);
+            this.feedbackError = "Failed to load all menu item details.";
           }
         },
 
-        async submitFeedback() {
+        async submitAllFeedback() {
           try {
-            const feedbackPayload = {
-              order_id: this.orderID,
-              menu_item_id: this.menuItem.id,
-              rating: this.rating,
-              tags: this.tags.split(',').map(tag => tag.trim()),
-              description: this.description
-            };
+            const feedbackRequests = this.menuItems.map(item => {
+              if (!item.rating) {
+                throw new Error(`Please provide a rating for ${item.name}`);
+              }
 
-            console.log("Submitting feedback:", feedbackPayload);
+              const payload = {
+                order_id: this.orderID,
+                menu_item_id: item.id,
+                rating: item.rating,
+                tags: item.tags.split(',').map(tag => tag.trim()),
+                description: item.descriptionInput
+              };
 
-            await axios.post("http://localhost:5005/submit_feedback", feedbackPayload);
-            this.currentMenuItemIndex++;
-            this.loadMenuItem();
+              console.log("Submitting feedback:", payload);
+              return axios.post("http://localhost:5005/submit_feedback", payload);
+            });
+
+            await Promise.all(feedbackRequests);
+
+            console.log("All feedback submitted successfully");
+            this.submissionComplete = true;
+
           } catch (error) {
             console.error("Error submitting feedback:", error);
-            this.feedbackError = "Failed to submit feedback.";
+            this.feedbackError = error.message || "Failed to submit feedback.";
           }
         }
       }

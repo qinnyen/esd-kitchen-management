@@ -66,7 +66,7 @@ services:
       - SMTP_USERNAME=3db3fcf147025c7ab9a24e9e8f75dd62
       - SMTP_PASSWORD=6c0fda3a2887782d20fde64e1c07b043
       - SENDER_EMAIL=yuyaoxuan888@gmail.com
-      - RECIPIENT_EMAIL=yaoxuan.yu.2023@scis.smu.edu.sg
+      - RECIPIENT_EMAIL=brian.lim.2023@scis.smu.edu.sg
     ports:
       - "5006:5006"
     depends_on:
