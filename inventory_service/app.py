@@ -7,6 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 import atexit
 import threading
+import os
 
 # sys.path.append('..')
 from config import DATABASE_CONFIG
@@ -88,8 +89,10 @@ def check_and_notify_low_stock():
         except Exception as e:
             print(f" [Inventory Service] Error checking low stock: {e}")
 
+LOW_STOCK_CHECK_INTERVAL = int(os.getenv('LOW_STOCK_CHECK_INTERVAL', 60))  # Default to 60s if not set
+
 # Schedule the job (adjust interval for testing/production)
-def schedule_low_stock_check(interval_seconds=10000000000000):  # Default: 15 seconds for testing
+def schedule_low_stock_check(interval_seconds=LOW_STOCK_CHECK_INTERVAL):  # Default: 15 seconds for testing
     """Schedule the low-stock check job with a configurable interval."""
     trigger = IntervalTrigger(seconds=interval_seconds)  # Change to `weeks=1` for production
     scheduler.add_job(
@@ -101,7 +104,7 @@ def schedule_low_stock_check(interval_seconds=10000000000000):  # Default: 15 se
     print(f" [Scheduler] Low-stock check scheduled every {interval_seconds} second(s).")
 
 # Start the scheduler when the app runs
-schedule_low_stock_check(interval_seconds=10000000000)  # Set to 5 seconds for testing
+schedule_low_stock_check()
 
 @app.route("/inventory/restock/", methods=["POST"])
 def send_restock_request_http(): 

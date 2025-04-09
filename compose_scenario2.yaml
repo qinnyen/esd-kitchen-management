@@ -36,7 +36,7 @@ services:
     environment:
       - FLASK_ENV=development
       - RABBITMQ_HOST=host.docker.internal
-      - INITIAL_DELAY=30  # Still delays first check by 30s
+      - LOW_STOCK_CHECK_INTERVAL=30
     volumes:
       - ./inventory_service:/app
       - ./docker_config.py:/app/config.py
@@ -47,6 +47,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://127.0.0.1:5004/health || exit 1"]
       interval: 10s
@@ -66,7 +67,7 @@ services:
       - SMTP_USERNAME=3db3fcf147025c7ab9a24e9e8f75dd62
       - SMTP_PASSWORD=6c0fda3a2887782d20fde64e1c07b043
       - SENDER_EMAIL=yuyaoxuan888@gmail.com
-      - RECIPIENT_EMAIL=zjliew.2023@scis.smu.edu.sg
+      - RECIPIENT_EMAIL=archer.ngan.2023@scis.smu.edu.sg
     ports:
       - "5021:5021"
     command: python notification.py
