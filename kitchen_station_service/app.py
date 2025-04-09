@@ -5,6 +5,9 @@ import sys
 from config import DATABASE_CONFIG  
 # from models import db, KitchenStation
 from datetime import datetime
+import pika
+import json
+
 app = Flask(__name__)
 
 # Configure the database connection
@@ -68,6 +71,33 @@ def assign_task():
         )
         db.session.add(new_task)
         db.session.commit()
+
+        # Send RFID event to RabbitMQ
+        try:
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host="host.docker.internal"))
+            channel = connection.channel()
+
+            channel.exchange_declare(exchange='rfid_exchange', exchange_type='direct', durable=True)
+
+            payload = {
+                "order_id": order_id,
+                "station_id": station_id,
+                "action": "scan"
+            }
+
+            channel.basic_publish(
+                exchange='rfid_exchange',
+                routing_key='rfid.scan',
+                body=json.dumps(payload),
+                properties=pika.BasicProperties(
+                    delivery_mode=2  # make message persistent
+                )
+            )
+            connection.close()
+            print(f"[RFID Trigger] Sent simulated scan event for Order {order_id}")
+        except Exception as e:
+            print(f"[RFID Error] Failed to send message to RFID queue: {str(e)}")
+
 
         return jsonify({"message": "Task assigned successfully", "task_id": new_task.TaskID}), 201
     except Exception as e:
