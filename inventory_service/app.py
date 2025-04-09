@@ -89,7 +89,7 @@ def check_and_notify_low_stock():
             print(f" [Inventory Service] Error checking low stock: {e}")
 
 # Schedule the job (adjust interval for testing/production)
-def schedule_low_stock_check(interval_seconds=15):  # Default: 15 seconds for testing
+def schedule_low_stock_check(interval_seconds=10000000000000):  # Default: 15 seconds for testing
     """Schedule the low-stock check job with a configurable interval."""
     trigger = IntervalTrigger(seconds=interval_seconds)  # Change to `weeks=1` for production
     scheduler.add_job(
@@ -101,7 +101,7 @@ def schedule_low_stock_check(interval_seconds=15):  # Default: 15 seconds for te
     print(f" [Scheduler] Low-stock check scheduled every {interval_seconds} second(s).")
 
 # Start the scheduler when the app runs
-schedule_low_stock_check(interval_seconds=15)  # Set to 5 seconds for testing
+schedule_low_stock_check(interval_seconds=10000000000)  # Set to 5 seconds for testing
 
 @app.route("/inventory/restock/", methods=["POST"])
 def send_restock_request_http(): 
@@ -111,7 +111,7 @@ def send_restock_request_http():
     data = request.get_json()
     restock_response = send_restock_request(
         ingredient_name=data.get("ingredient_name"),
-        amount_needed=data.get("amount_needed"),
+        amount_needed=Inventory.query.filter_by(IngredientName=data.get("ingredient_name")).first().ReorderThreshold,
         unit_of_measure=data.get("unit_of_measure")
     )
       # If the request was successful, return a success response

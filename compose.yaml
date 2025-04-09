@@ -26,6 +26,12 @@ services:
       - ./rabbitmq:/app
     networks:
       - esd-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
 
   ####################################
   # Flask Application: Kitchen Management
@@ -94,6 +100,7 @@ services:
       - "5004:5004"
     environment:
       - FLASK_ENV=development
+      - RABBITMQ_HOST=host.docker.internal
     volumes:
       - ./inventory_service:/app
       - ./docker_config.py:/app/config.py
@@ -101,6 +108,15 @@ services:
       - esd-net  
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:5004/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
   kitchen-station-service:
     build:
       context: ./kitchen_station_service
@@ -147,6 +163,147 @@ services:
     volumes:
       - ./RFID_scanning_service:/app
       - ./docker_config.py:/app/config.py
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  notification:
+    build:
+      context: ./feedback_service
+      dockerfile: notification_service/Dockerfile
+    container_name: notification-service
+    environment:
+      - RABBITMQ_HOST=host.docker.internal
+      - SMTP_SERVER=in-v3.mailjet.com
+      - SMTP_PORT=587
+      - SMTP_USERNAME=3db3fcf147025c7ab9a24e9e8f75dd62
+      - SMTP_PASSWORD=6c0fda3a2887782d20fde64e1c07b043
+      - SENDER_EMAIL=yuyaoxuan888@gmail.com
+      - RECIPIENT_EMAIL=zjliew.2023@scis.smu.edu.sg
+    ports:
+      - "5021:5021"
+    command: python notification.py
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:5021/health || exit 1"]
+      start_period: 45s
+
+  manage_inventory:
+    build:
+      context: ./manage_inventory_service
+      dockerfile: Dockerfile
+    container_name: manage-inventory-service
+    ports:
+      - "5006:5006"  
+    environment:
+      - RABBITMQ_HOST=host.docker.internal
+      - INVENTORY_SERVICE_URL=http://host.docker.internal:5004
+    volumes:
+      - ./manage_inventory_service:/app
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - rabbitmq
+      - inventory-service
+
+  restocking:
+    build:
+      context: ./restocking_service
+      dockerfile: Dockerfile
+    container_name: restocking-service
+    ports:
+      - "5007:5007"
+    environment:
+      - RABBITMQ_HOST=host.docker.internal
+    volumes:
+      - ./restocking_service:/app
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  ####################################
+  # Supplier Services
+  ####################################
+  supplier_cheesehaven:
+    build:
+      context: ./supplier_cheesehaven_service
+      dockerfile: Dockerfile
+    container_name: supplier-cheesehaven
+    ports:
+      - "5014:5014"
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  supplier_dairydelight:
+    build:
+      context: ./supplier_dairydelight_service
+      dockerfile: Dockerfile
+    container_name: supplier-dairydelight
+    ports:
+      - "5015:5015"
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  supplier_freshfarms:
+    build:
+      context: ./supplier_freshfarms_service
+      dockerfile: Dockerfile
+    container_name: supplier-freshfarms
+    ports:
+      - "5016:5016"
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  supplier_lettuceland:
+    build:
+      context: ./supplier_lettuceland_service
+      dockerfile: Dockerfile
+    container_name: supplier-lettuceland
+    ports:
+      - "5017:5017"
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  supplier_organicgoods:
+    build:
+      context: ./supplier_organicgoods_service
+      dockerfile: Dockerfile
+    container_name: supplier-organicgoods
+    ports:
+      - "5018:5018"
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  supplier_tomatoexpress:
+    build:
+      context: ./supplier_tomatoexpress_service
+      dockerfile: Dockerfile
+    container_name: supplier-tomatoexpress
+    ports:
+      - "5019:5019"
     networks:
       - esd-net
     extra_hosts:

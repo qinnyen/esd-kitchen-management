@@ -178,12 +178,35 @@ def get_all_menu_items():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/menu/items/<string:itemIDs>', methods=['GET'])
+def get_menu_items_details(itemIDs):
+    try:
+        print("Fetching menu item details...")
+        print(f"Item IDs: {itemIDs}")
+        # Split the itemIDs string into a list of integers
+        itemIDs = [int(id.strip()) for id in itemIDs.split(",")]
+        print(itemIDs)
+        # Fetch menu items based on the provided IDs
+        menu_items = Menu.query.filter(Menu.MenuItemID.in_(itemIDs)).all()
+        result = []
+        for item in menu_items:
+            result.append({
+                "id": item.MenuItemID,
+                "name": item.ItemName,
+                "description": item.Description,
+                "price": item.Price,
+                "availability_status": item.AvailabilityStatus
+            })
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
 @app.route('/menu/item/<int:itemID>', methods=['GET'])
 def get_menu_item_details(itemID):
     try:
         # Query the menu item by MenuItemID
         menu_item = Menu.query.filter_by(MenuItemID=itemID).first()
-
+        
         if menu_item:
             result = {
                 "id": menu_item.MenuItemID,
@@ -194,6 +217,7 @@ def get_menu_item_details(itemID):
             }
             return jsonify(result), 200
         else:
+            print(f"Menu item with ID {itemID} not found")
             return jsonify({"error": f"Menu item with ID {itemID} not found"}), 404
 
     except Exception as e:

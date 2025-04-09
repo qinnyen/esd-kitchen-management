@@ -175,7 +175,7 @@ def get_order_status(customer_id):
         menu_response = requests.get(f"{MENU_SERVICE_URL}/menu/items/{menu_ids}", headers=headers)
         if menu_response.status_code != 200:
             return jsonify({"error": f"Failed to retrieve menu items. Status: {menu_response.status_code}, Message: {menu_response.text}"}), menu_response.status_code
-
+        
         # Add menu items to order response
         menu_items = menu_response.json()
         

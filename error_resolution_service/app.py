@@ -78,7 +78,7 @@ def trigger_error():
         # Call inventory service to restock the ingredient
         inventory_response = requests.post(
             f"{INVENTORY_SERVICE_URL}/inventory/restock",
-            json={"ingredient_name": ingredient_name, "amount_needed": 20, "unit_of_measure": "kg"}
+            json={"ingredient_name": ingredient_name, "unit_of_measure": "kg"}
         )
         if  inventory_response.status_code != 200:
             return jsonify({"error": "Failed to notify inventory service"}), 500
