@@ -22,7 +22,7 @@ ENV SENDER_EMAIL=${SENDER_EMAIL}
 ENV RECIPIENT_EMAIL=${RECIPIENT_EMAIL}
 
 # Expose the necessary port
-EXPOSE 5006
+EXPOSE 5021
 
 # Command to run the script
 CMD ["python", "notification.py"]
