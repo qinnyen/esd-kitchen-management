@@ -1,26 +1,51 @@
+version: "3.8"
+
 # Custom network
 networks:
-  esd-net:  
+  esd-net:
     driver: bridge
 
 services:
 
-  # order_service:
-  #   build:
-  #     context: .  # Change the context to the root of the project
-  #     dockerfile: order_service/Dockerfile
-  #   environment:
-  #     dbURL: mysql+mysqlconnector://root@host.docker.internal:3306/is213_order
-  #     PYTHONUNBUFFERED: 1
-  #   ports:
-  #     - "5001:5001"
-  #   networks:
-  #     - esd-net
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"     # RabbitMQ port
+      - "15672:15672"   # Management dashboard
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    networks:
+      - esd-net
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  menu-service:
+    build:
+      context: ../menu_service  # Reference to your parent directory menu_service
+      dockerfile: Dockerfile
+    container_name: menu-service
+    ports:
+      - "5002:5002"
+    environment:
+      - FLASK_ENV=development
+      - INVENTORY_SERVICE=http://host.docker.internal:5004
+      - ERROR_RESOLUTION_SERVICE_URL=http://host.docker.internal:5013
+    volumes:
+      - ../menu_service:/app
+      - ../docker_config.py:/app/config.py
+    networks:
+      - esd-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   feedback_service:
     build:
-      context: .  # Change the context to the root of the project
+      context: .  # Local feedback_service folder
       dockerfile: feedback_service/Dockerfile
     environment:
       dbURL: mysql+mysqlconnector://root@host.docker.internal:3306/is213_feedback
@@ -32,33 +57,19 @@ services:
 
   submit_feedback_service:
     build:
-      context: .  # Change the context to the root of the project
+      context: .
       dockerfile: submit_feedback_service/Dockerfile
     ports:
       - "5005:5005"
     depends_on:
       - feedback_service
-      
+      - menu-service
     networks:
-        - esd-net
-
-
-  aggregator:
-    build:
-      context: .  # Change the context to the root of the project
-      dockerfile: aggregator/Dockerfile
-    environment:
-      - RABBITMQ_HOST=rabbitmq
-      - QUEUE_NAME=feedback_alert
-    depends_on:
-      - feedback_service
-    command: python aggregator.py  # Make sure this matches your script filename
-    networks:
-        - esd-net
+      - esd-net
 
   notification:
     build:
-      context: .  # Change the context to the root of the project
+      context: .
       dockerfile: notification_service/Dockerfile
     environment:
       - SMTP_SERVER=in-v3.mailjet.com
@@ -66,11 +77,16 @@ services:
       - SMTP_USERNAME=3db3fcf147025c7ab9a24e9e8f75dd62
       - SMTP_PASSWORD=6c0fda3a2887782d20fde64e1c07b043
       - SENDER_EMAIL=yuyaoxuan888@gmail.com
-      - RECIPIENT_EMAIL=zjliew.2023@scis.smu.edu.sg
+      - RECIPIENT_EMAIL=brian.lim.2023@scis.smu.edu.sg
     ports:
-      - "5006:5006"
+      - "5021:5021"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
-      - aggregator
-    command: python notification.py  # Ensure this matches the filename of your notification script
+      rabbitmq:
+        condition: service_healthy
+      feedback_service:
+        condition: service_started
+    command: python notification.py
     networks:
-        - esd-net
+      - esd-net
