@@ -61,7 +61,7 @@ docker-compose -f compose.yaml up -d --build
 
 
 
-## Technical Diagrams
+
 ## Built With
 
 ### Frontend
@@ -96,6 +96,5 @@ docker-compose -f compose.yaml up -d --build
 
 * External API
   - Stripe Payment API
-  - Mailjet SMTP
 
 <p align="right">(<a href="#top">back to top</a>)</p>
