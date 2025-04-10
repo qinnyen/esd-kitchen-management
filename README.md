@@ -36,11 +36,6 @@ To install the project, follow these steps:
     ```bash
     cd esd-kitchen-management
     ```
-3. Install the dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
 
 ## Usage (with Docker)
 
