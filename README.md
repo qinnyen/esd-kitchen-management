@@ -36,18 +36,13 @@ To install the project, follow these steps:
     ```bash
     cd esd-kitchen-management
     ```
+3. Import all the sql files in the sql folder in root
 
 ## Usage (with Docker)
 
-<!-- To start the application, run:
-```bash
-docker compose up -d --build
-```
-or
+Wamp is required.
+Place the frontend folder under esd-kitchen-management/feedback_service/frontend into the www folder
 
-```bash
-docker compose up -d
-``` -->
 ## For scenario 1
 cd esd-kitchen-management/feedback_service
 docker-compose -f compose.yaml up -d --build
