@@ -42,27 +42,43 @@ def emit_rfid_event(ingredient_id, quantity_used):
         return False
 
 # API Route: Simulate RFID Scan
-@app.route("/rfid/scan", methods=["POST"])
-def scan_rfid_tag():
-    """
-    Simulates an RFID tag scan. 
-    Expects JSON: { "ingredient_id": int, "quantity_used": int }
-    """
-    try:
-        data = request.get_json()
-        ingredient_id = int(data["ingredient_id"])
-        quantity_used = int(data.get("quantity_used", 1))  # Default to 1 if not provided
+# -----------------------------------------------
+# [DEV / TESTING ENDPOINT]
+# This route is NOT part of the real kitchen workflow.
+# It allows manual simulation of RFID scan events.
+# Use this to:
+#   - Manually test the connection from RFID to Inventory
+#   - Simulate events without involving Kitchen Station
+#   - Debug and verify AMQP integration
+#
+# For real event flow:
+# Kitchen Station → sends ingredient info → RFID exchange
+# RFID Listener (in this service) → calls emit_rfid_event() 
+# → Inventory Service processes the event
+# -----------------------------------------------
 
-        success = emit_rfid_event(ingredient_id, quantity_used)
+# @app.route("/rfid/scan", methods=["POST"])
+# def scan_rfid_tag():
+#     """
+#     Simulates an RFID tag scan. 
+#     Expects JSON: { "ingredient_id": int, "quantity_used": int }
+#     """
+#     try:
+#         data = request.get_json()
+#         ingredient_id = int(data["ingredient_id"])
+#         quantity_used = int(data.get("quantity_used", 1))  # Default to 1 if not provided
 
-        if success:
-            return jsonify({"message": "RFID event sent to inventory service."}), 200
-        else:
-            return jsonify({"error": "Failed to emit RFID event."}), 500
+#         success = emit_rfid_event(ingredient_id, quantity_used)
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
-    
+#         if success:
+#             return jsonify({"message": "RFID event sent to inventory service."}), 200
+#         else:
+#             return jsonify({"error": "Failed to emit RFID event."}), 500
+
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 400
+
+
 # handle rfid.scan in kitchen station
 def handle_scan_trigger(channel, method, properties, body):
     try:
@@ -79,7 +95,7 @@ def handle_scan_trigger(channel, method, properties, body):
 
     except Exception as e:
         print(f"[RFID Listener] Error handling scan event: {e}")
-        
+
 # handle rfid_exchange in kitchen station
 def start_rfid_exchange_listener():
     try:
