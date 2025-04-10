@@ -113,7 +113,7 @@ def check_low_rated_items():
 def get_menu_item_name(item_id):
     try:
         import requests
-        response = requests.get(f'http://menu-service:5002/menu/item/{item_id}')
+        response = requests.get(f'http://host.docker.internal:5002/menu/item/{item_id}')
         if response.status_code == 200:
             return response.json().get('name')
     except Exception as e:
