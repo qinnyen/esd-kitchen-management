@@ -74,9 +74,9 @@ services:
     environment:
       - SMTP_SERVER=in-v3.mailjet.com
       - SMTP_PORT=587
-      - SMTP_USERNAME=3db3fcf147025c7ab9a24e9e8f75dd62
-      - SMTP_PASSWORD=6c0fda3a2887782d20fde64e1c07b043
-      - SENDER_EMAIL=yuyaoxuan888@gmail.com
+      - SMTP_USERNAME=7524d5ed4cf8bafb22a5a59c1d3d7e36
+      - SMTP_PASSWORD=b3597116df3387ccb420a5ff8f97c728
+      - SENDER_EMAIL=blbx008228@gmail.com
       - RECIPIENT_EMAIL=brian.lim.2023@scis.smu.edu.sg
     ports:
       - "5021:5021"

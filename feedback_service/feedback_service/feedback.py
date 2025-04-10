@@ -147,9 +147,9 @@ def send_rabbitmq_alert(menu_item_name, average_rating):
 
 # Start the scheduler
 scheduler = BackgroundScheduler()
-scheduler.add_job(func=check_low_rated_items, trigger="interval", seconds=60)
+scheduler.add_job(func=check_low_rated_items, trigger="interval", seconds=30)
 scheduler.start()
 
 # Run the Flask app
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5003, debug=True)
+    app.run(host='0.0.0.0', port=5003, debug=True, use_reloader=False)

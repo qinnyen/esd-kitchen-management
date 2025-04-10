@@ -28,6 +28,13 @@ batch_lock = threading.Lock()  # Thread safety
 # --- Email Functions (Unchanged) ---
 def send_email(alerts):
     try:
+        print(f"SMTP_SERVER: {SMTP_SERVER}")
+        print(f"SMTP_PORT: {SMTP_PORT}")
+        print(f"SMTP_USERNAME: {SMTP_USERNAME}")
+        print(f"SMTP_PASSWORD: {SMTP_PASSWORD}")
+        print(f"SENDER_EMAIL: {SENDER_EMAIL}")
+        print(f"RECIPIENT_EMAIL: {RECIPIENT_EMAIL}")
+
         msg = MIMEMultipart()
         msg['From'] = SENDER_EMAIL
         msg['To'] = RECIPIENT_EMAIL
@@ -65,9 +72,9 @@ def callback(ch, method, properties, body):
         alert_msg = json.loads(body)
         print(f"Received alert: {alert_msg}")
         alert_batch.append(alert_msg)
-        if len(alert_batch) >= 2:  # Batch size = 2
-            send_email(alert_batch)
-            alert_batch.clear()
+        # if len(alert_batch) >= 2:  # Batch size = 2
+        #     send_email(alert_batch)
+        #     alert_batch.clear()
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:
         print(f"Error processing message: {e}")
@@ -108,11 +115,27 @@ def flush_order_batch():
             )
             send_email_order(body_order)
 
+# Add flsuh for alert batch similar to order batch
+def flush_alert_batch():
+    """Send batched alerts (low ratings) every interval."""
+    with batch_lock:
+        if alert_batch:
+            send_email(alert_batch)
+            alert_batch.clear()
+
 def start_batch_timer():
     """Trigger batch processing every 30 seconds."""
     while True:
         time.sleep(30)
         flush_order_batch()
+
+# Alert batch timer
+def start_alert_batch_timer():
+    """Trigger batch processing for alerts every 30 seconds."""
+    while True:
+        time.sleep(30)
+        flush_alert_batch()
+
 
 def process_notification_order(ch, method, properties, body_order):
     """Add orders to queue (time-based batching)."""
@@ -155,6 +178,7 @@ def start_amqp_consumer():
 
 if __name__ == "__main__":
     threading.Thread(target=start_batch_timer, daemon=True).start()
+    threading.Thread(target=start_alert_batch_timer, daemon=True).start() # Alert batch timer
     threading.Thread(target=listen_to_queue, daemon=True).start()  # Alerts 
     threading.Thread(target=start_amqp_consumer, daemon=True).start()  # Orders 
     
