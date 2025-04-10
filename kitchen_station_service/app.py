@@ -92,11 +92,11 @@ def assign_task():
                     body=json.dumps(payload),
                     properties=pika.BasicProperties(delivery_mode=2)
                 )
-                print(f"[RFID Trigger] Sent ingredient scan for IngredientID {ingredient['ingredient_id']}")
+                print(f"[RFID Trigger] Sent ingredient scan for IngredientID {ingredient['ingredient_id']}",flush=True)
 
             connection.close()
         except Exception as e:
-            print(f"[RFID Error] Failed to send RFID events: {str(e)}")
+            print(f"[RFID Error] Failed to send RFID events: {str(e)}",flush=True)
 
         return jsonify({"message": "Task assigned successfully", "task_id": new_task.TaskID}), 201
     except Exception as e:

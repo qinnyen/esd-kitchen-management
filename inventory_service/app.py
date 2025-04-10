@@ -293,7 +293,7 @@ def handle_rfid_event(ch, method, properties, body):
                 if ingredient:
                     ingredient.QuantityAvailable -= quantity_used
                     db.session.commit()
-                    print(f"[Inventory] Updated stock for IngredientID {ingredient_id}: -{quantity_used}")
+                    print(f"[Inventory] Updated stock for IngredientID {ingredient_id}: -{quantity_used}",flush=True)
 
                     # Trigger restocking when stock hits 0
                     if ingredient.QuantityAvailable == 0:
@@ -303,7 +303,7 @@ def handle_rfid_event(ch, method, properties, body):
                             unit_of_measure=ingredient.UnitOfMeasure
                         )
                 else:
-                    print(f"[Inventory] Ingredient ID {ingredient_id} not found.")
+                    print(f"[Inventory] Ingredient ID {ingredient_id} not found.",flush=True)
 
     except Exception as e:
         print(f"[Inventory] Error processing RFID event: {e}")
@@ -315,10 +315,10 @@ def start_rfid_consumer():
         channel = connection.channel()
         channel.queue_declare(queue="rfid_events_queue", durable=True)
         channel.basic_consume(queue="rfid_events_queue", on_message_callback=handle_rfid_event, auto_ack=True)
-        print("[Inventory] RFID consumer started.")
+        print("[Inventory] RFID consumer started.",flush=True)
         channel.start_consuming()
     except Exception as e:
-        print(f"[Inventory] RFID consumer failed: {e}")
+        print(f"[Inventory] RFID consumer failed: {e}",flush=True)
 
 if __name__ == "__main__":
     threading.Thread(target=start_rfid_consumer, daemon=True).start()  #start RFID event consumer in background

@@ -7,7 +7,8 @@ import threading
 app = Flask(__name__)
 
 # RabbitMQ Configuration
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "host.docker.internal")
+# RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "host.docker.internal")
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "esd-rabbit")
 RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))
 RFID_EVENTS_QUEUE = "rfid_events_queue"
 
@@ -17,7 +18,7 @@ def emit_rfid_event(ingredient_id, quantity_used):
     Publishes an 'ingredient_used' event to the RFID event queue.
     """
     try:
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT))
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
         channel = connection.channel()
         channel.queue_declare(queue=RFID_EVENTS_QUEUE, durable=True)
 
@@ -34,11 +35,11 @@ def emit_rfid_event(ingredient_id, quantity_used):
             properties=pika.BasicProperties(delivery_mode=2)  # make message persistent
         )
 
-        print(f"[RFID] Event published: {event_payload}")
+        print(f"[RFID] Event published: {event_payload}",flush=True)
         connection.close()
         return True
     except Exception as e:
-        print(f"[RFID] Failed to publish event: {e}")
+        print(f"[RFID] Failed to publish event: {e}",flush=True)
         return False
 
 # API Route: Simulate RFID Scan
@@ -57,26 +58,26 @@ def emit_rfid_event(ingredient_id, quantity_used):
 # → Inventory Service processes the event
 # -----------------------------------------------
 
-# @app.route("/rfid/scan", methods=["POST"])
-# def scan_rfid_tag():
-#     """
-#     Simulates an RFID tag scan. 
-#     Expects JSON: { "ingredient_id": int, "quantity_used": int }
-#     """
-#     try:
-#         data = request.get_json()
-#         ingredient_id = int(data["ingredient_id"])
-#         quantity_used = int(data.get("quantity_used", 1))  # Default to 1 if not provided
+@app.route("/rfid/scan", methods=["POST"])
+def scan_rfid_tag():
+    """
+    Simulates an RFID tag scan. 
+    Expects JSON: { "ingredient_id": int, "quantity_used": int }
+    """
+    try:
+        data = request.get_json()
+        ingredient_id = int(data["ingredient_id"])
+        quantity_used = int(data.get("quantity_used", 1))  # Default to 1 if not provided
 
-#         success = emit_rfid_event(ingredient_id, quantity_used)
+        success = emit_rfid_event(ingredient_id, quantity_used)
 
-#         if success:
-#             return jsonify({"message": "RFID event sent to inventory service."}), 200
-#         else:
-#             return jsonify({"error": "Failed to emit RFID event."}), 500
+        if success:
+            return jsonify({"message": "RFID event sent to inventory service."}), 200
+        else:
+            return jsonify({"error": "Failed to emit RFID event."}), 500
 
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 
 # handle rfid.scan in kitchen station
@@ -88,18 +89,18 @@ def handle_scan_trigger(channel, method, properties, body):
         ingredient_id = data.get("ingredient_id")
         quantity_used = data.get("quantity_used", 1)
 
-        print(f"[RFID Listener] Received scan from Order {order_id}, Station {station_id}, Ingredient {ingredient_id}, Qty {quantity_used}")
+        print(f"[RFID Listener] Received scan from Order {order_id}, Station {station_id}, Ingredient {ingredient_id}, Qty {quantity_used}",flush=True)
 
         # Trigger event to inventory
         emit_rfid_event(ingredient_id=ingredient_id, quantity_used=quantity_used)
 
     except Exception as e:
-        print(f"[RFID Listener] Error handling scan event: {e}")
+        print(f"[RFID Listener] Error handling scan event: {e}",flush=True)
 
 # handle rfid_exchange in kitchen station
 def start_rfid_exchange_listener():
     try:
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT))
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
         channel = connection.channel()
 
         channel.exchange_declare(exchange='rfid_exchange', exchange_type='direct', durable=True)
@@ -109,10 +110,10 @@ def start_rfid_exchange_listener():
         channel.queue_bind(exchange='rfid_exchange', queue=queue_name, routing_key='rfid.scan')
         channel.basic_consume(queue=queue_name, on_message_callback=handle_scan_trigger, auto_ack=True)
 
-        print("[RFID Listener] Waiting for scan events from Kitchen Station...")
+        print("[RFID Listener] Waiting for scan events from Kitchen Station...",flush=True)
         channel.start_consuming()
     except Exception as e:
-        print(f"[RFID Listener] Failed to start: {e}")
+        print(f"[RFID Listener] Failed to start: {e}",flush=True)
 
 
 if __name__ == "__main__":
