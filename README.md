@@ -93,35 +93,13 @@ docker-compose -f compose.yaml up -d --build
 
 
 - [Stripe API](https://stripe.com/docs/api/payment_intents)
+- [Mailjet SMTP](https://dev.mailjet.com/email/guides/)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
-
-## Scenario 1
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-## Scenario 2
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-## Scenario 3
-![alt text](images/scenario3.png)
-![alt text](images/scenario3_2.png)
-![alt text](images/scenario3_3.png)
-<p align="right">(<a href="#top">back to top</a>)</p>
-<!-- Beyond the Labs -->
 
 ## Beyond the Labs
 
 * External API
   - Stripe Payment API
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-<!-- ACKNOWLEDGMENTS -->
-
-## Acknowledgments
-
-* [Liew Zhen Jie](https://github.com/Chicoo000)
-
 
 <p align="right">(<a href="#top">back to top</a>)</p>
