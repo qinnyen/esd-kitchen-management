@@ -54,13 +54,13 @@ or
 docker compose up -d
 ``` -->
 ## For scenario 1
-cd esd-kitchen-management
+cd esd-kitchen-management/feedback_service
 docker-compose -f compose.yaml up -d --build
 ## For scenario 2
 cd esd-kitchen-management 
 docker-compose -f compose_scenario2.yaml up -d --build
 ## For scenario 3
-cd esd-kitchen-management/feedback_service
+cd esd-kitchen-management
 docker-compose -f compose.yaml up -d --build
 
 
