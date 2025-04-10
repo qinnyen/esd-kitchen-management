@@ -34,6 +34,7 @@ db = SQLAlchemy(app)
 class Feedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     menu_item_id = db.Column(db.String(64), nullable=False)
+    menu_item_name = db.Column(db.String(256), nullable=False)
     order_id = db.Column(db.String(64), nullable=False)
     rating = db.Column(db.Integer, nullable=False)
     tags = db.Column(db.String(256))
@@ -67,6 +68,7 @@ def create_feedback():
 
         new_feedback = Feedback(
             menu_item_id=data["menu_item_id"],
+            menu_item_name=data["menu_item_name"],
             order_id=data["order_id"],
             rating=data["rating"],
             tags=",".join(data.get("tags", [])),
@@ -96,24 +98,24 @@ def check_low_rated_items():
         feedbacks = Feedback.query.all()
         ratings_by_item = {}
         counts_by_item = {}
+        names_by_item = {}
 
         for feedback in feedbacks:
             item_id = feedback.menu_item_id
             ratings_by_item[item_id] = ratings_by_item.get(item_id, 0) + feedback.rating
             counts_by_item[item_id] = counts_by_item.get(item_id, 0) + 1
+            names_by_item[item_id] = feedback.menu_item_name 
 
         for item_id, total_rating in ratings_by_item.items():
             average_rating = total_rating / counts_by_item[item_id]
             if average_rating <= 2:
-                menu_item_name = get_menu_item_name(item_id)
-
-                if menu_item_name:
-                    send_rabbitmq_alert(menu_item_name, average_rating)
+                menu_item_name = names_by_item[item_id]
+                send_rabbitmq_alert(menu_item_name, average_rating)
 
 def get_menu_item_name(item_id):
     try:
         import requests
-        response = requests.get(f'http://host.docker.internal:5002/menu/item/{item_id}')
+        response = requests.get(f'http://menu-service:5002/menu/item/{item_id}')
         if response.status_code == 200:
             return response.json().get('name')
     except Exception as e:

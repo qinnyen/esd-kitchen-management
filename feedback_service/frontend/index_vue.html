@@ -132,6 +132,7 @@
               const payload = {
                 order_id: this.orderID,
                 menu_item_id: item.id,
+                menu_item_name: item.name,
                 rating: item.rating,
                 tags: item.tags.split(',').map(tag => tag.trim()),
                 description: item.descriptionInput
