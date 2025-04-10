@@ -79,13 +79,25 @@ def create_order():
         
             db.session.add(new_order)
             db.session.commit()
-     
-            
+
+        # Build ingredient map directly from provided menu_item_ids
+            ingredient_map = {}
+            for item in menu_item_ids:
+                quantity = item.get("Quantity", 1)
+                for ing in item.get("ingredients", []):
+                    ing_id = ing["ingredient_id"]
+                    qty = ing["quantity"] * quantity
+                    ingredient_map[ing_id] = ingredient_map.get(ing_id, 0) + qty
+
+            ingredients = [{"ingredient_id": k, "quantity_used": v} for k, v in ingredient_map.items()]
+
+        
             # Invoke Kitchen Station Service to assign the task
             kitchen_station_url = f"{KITCHEN_SERVICE_URL}/kitchen/assign"
             payload = {
                 "order_id": new_order.OrderID,
-                "station_id": station_id
+                "station_id": station_id,
+                "ingredients": ingredients
             }
             response = requests.post(kitchen_station_url, json=payload)
 

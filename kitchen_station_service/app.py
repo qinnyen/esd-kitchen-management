@@ -60,6 +60,7 @@ def assign_task():
         data = request.get_json()
         order_id = data["order_id"]
         station_id = data["station_id"]
+        ingredients = data.get("ingredients", [])
         task_status = "Assigned"
 
         new_task = KitchenStation(
@@ -72,32 +73,30 @@ def assign_task():
         db.session.add(new_task)
         db.session.commit()
 
-        # Send RFID event to RabbitMQ
+        # Send RFID events to RabbitMQ for each ingredient used
         try:
             connection = pika.BlockingConnection(pika.ConnectionParameters(host="host.docker.internal"))
             channel = connection.channel()
-
             channel.exchange_declare(exchange='rfid_exchange', exchange_type='direct', durable=True)
 
-            payload = {
-                "order_id": order_id,
-                "station_id": station_id,
-                "action": "scan"
-            }
-
-            channel.basic_publish(
-                exchange='rfid_exchange',
-                routing_key='rfid.scan',
-                body=json.dumps(payload),
-                properties=pika.BasicProperties(
-                    delivery_mode=2  # make message persistent
+            for ingredient in ingredients:
+                payload = {
+                    "order_id": order_id,
+                    "station_id": station_id,
+                    "ingredient_id": ingredient["ingredient_id"],
+                    "quantity_used": ingredient["quantity_used"]
+                }
+                channel.basic_publish(
+                    exchange='rfid_exchange',
+                    routing_key='rfid.scan',
+                    body=json.dumps(payload),
+                    properties=pika.BasicProperties(delivery_mode=2)
                 )
-            )
-            connection.close()
-            print(f"[RFID Trigger] Sent simulated scan event for Order {order_id}")
-        except Exception as e:
-            print(f"[RFID Error] Failed to send message to RFID queue: {str(e)}")
+                print(f"[RFID Trigger] Sent ingredient scan for IngredientID {ingredient['ingredient_id']}")
 
+            connection.close()
+        except Exception as e:
+            print(f"[RFID Error] Failed to send RFID events: {str(e)}")
 
         return jsonify({"message": "Task assigned successfully", "task_id": new_task.TaskID}), 201
     except Exception as e:
