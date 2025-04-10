@@ -3,7 +3,7 @@
 ## Introduction
 
 
-This project, `esd-kitchen-management`, is designed to streamline and manage kitchen operations efficiently. It includes features such as inventory management, order tracking, order creation etc <--- ==need to update==. 
+This project, `esd-kitchen-management`, is designed to streamline and manage kitchen operations efficiently. It includes features such as inventory management, order tracking, order creation and feedback aggregation.
 
 ## Features
 
@@ -41,22 +41,10 @@ To install the project, follow these steps:
     pip install -r requirements.txt
     ```
 
-## Usage (without Docker)
-
-To start the application, run:
-```bash
-flask run
-```
-To start the services, navigate to the respective service folders and run:
-```bash
-# inventory service
-cd inventory_service
-python app.py
-```
 
 ## Usage (with Docker)
 
-To start the application, run:
+<!-- To start the application, run:
 ```bash
 docker compose up -d --build
 ```
@@ -64,7 +52,18 @@ or
 
 ```bash
 docker compose up -d
-```
+``` -->
+## For scenario 1
+cd esd-kitchen-management
+docker-compose -f compose.yaml up -d --build
+## For scenario 2
+cd esd-kitchen-management 
+docker-compose -f compose_scenario2.yaml up -d --build
+## For scenario 3
+cd esd-kitchen-management/feedback_service
+docker-compose -f compose.yaml up -d --build
+
+
 
 
 ## Technical Diagrams
@@ -93,7 +92,6 @@ docker compose up -d
 ### External APIs used
 
 
-- [Twilio API](https://www.twilio.com/docs/sms/api/message-resource)
 - [Stripe API](https://stripe.com/docs/api/payment_intents)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
