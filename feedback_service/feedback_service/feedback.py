@@ -112,16 +112,6 @@ def check_low_rated_items():
                 menu_item_name = names_by_item[item_id]
                 send_rabbitmq_alert(menu_item_name, average_rating)
 
-def get_menu_item_name(item_id):
-    try:
-        import requests
-        response = requests.get(f'http://menu-service:5002/menu/item/{item_id}')
-        if response.status_code == 200:
-            return response.json().get('name')
-    except Exception as e:
-        print(f"[Feedback Scheduler] Error fetching menu item name: {str(e)}")
-    return None
-
 def send_rabbitmq_alert(menu_item_name, average_rating):
     try:
         connection = pika.BlockingConnection(pika.ConnectionParameters(host='host.docker.internal'))
