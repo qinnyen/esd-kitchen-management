@@ -44,14 +44,20 @@ Wamp is required.
 Place the frontend folder under esd-kitchen-management/feedback_service/frontend into the www folder
 
 ## For scenario 1
+```bash
 cd esd-kitchen-management/feedback_service
 docker-compose -f compose.yaml up -d --build
+```
 ## For scenario 2
+```bash
 cd esd-kitchen-management 
 docker-compose -f compose_scenario2.yaml up -d --build
+```
 ## For scenario 3
+```bash
 cd esd-kitchen-management
 docker-compose -f compose.yaml up -d --build
+```
 
 
 
